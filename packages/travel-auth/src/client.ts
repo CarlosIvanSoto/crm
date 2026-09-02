@@ -1,0 +1,11 @@
+import { organizationClient } from "better-auth/client/plugins";
+import { createAuthClient } from "better-auth/react";
+
+export const authClient = createAuthClient({
+	baseURL: globalThis.window?.location.origin,
+	plugins: [organizationClient()],
+});
+
+export const { getSession, signIn, signOut, useSession } = authClient;
+
+export type AuthClient = typeof authClient;

@@ -1,0 +1,13 @@
+{
+	"$schema": "https://turborepo.dev/schema.json",
+	"extends": ["//"],
+	"tasks": {
+		"travel:auth:generate": {
+			"cache": false,
+			"passThroughEnv": ["TRAVEL_DATABASE_URL"]
+		},
+		"check-types": {
+			"passThroughEnv": ["TRAVEL_DATABASE_URL"]
+		}
+	}
+}

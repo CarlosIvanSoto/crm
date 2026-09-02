@@ -22,6 +22,7 @@
 		"db:seed": "turbo run db:seed",
 		"db:studio": "turbo run db:studio",
 		"db:test": "bun run --filter=@crm/db db:test",
+		"travel:auth:generate": "turbo run travel:auth:generate --filter=@travel/auth",
 		"travel:deploy": "turbo run travel:deploy --filter=@travel/db",
 		"travel:migrate": "turbo run travel:migrate --filter=@travel/db",
 		"travel:push": "turbo run travel:push --filter=@travel/db",

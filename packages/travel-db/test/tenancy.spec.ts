@@ -3,6 +3,15 @@ import { randomUUID } from "node:crypto";
 import { db } from "../src/client";
 import { agencyDb } from "../src/tenancy";
 
+async function rejection(run: () => PromiseLike<unknown>): Promise<Error> {
+	try {
+		await run();
+	} catch (error) {
+		return error instanceof Error ? error : new Error(String(error));
+	}
+	throw new Error("Expected the call to reject, but it resolved.");
+}
+
 const suffix = process.env.TEST_RUN_ID ?? "tenancy-spec";
 
 const agencyA = `${suffix}-a`;
@@ -88,11 +97,13 @@ describe("agencyDb", () => {
 	});
 
 	it("update throws P2025 on another agency's row", async () => {
-		const attempt = agencyDb(db, agencyA).booking.update({
-			where: { id: bookingB },
-			data: { status: "CANCELLED" },
-		});
-		await expect(attempt).rejects.toThrow();
+		const error = await rejection(() =>
+			agencyDb(db, agencyA).booking.update({
+				where: { id: bookingB },
+				data: { status: "CANCELLED" },
+			}),
+		);
+		expect(error).toBeInstanceOf(Error);
 
 		const untouched = await db.booking.findUniqueOrThrow({
 			where: { id: bookingB },
@@ -111,9 +122,19 @@ describe("agencyDb", () => {
 	});
 
 	it("findUnique is refused", async () => {
-		await expect(
+		const error = await rejection(() =>
 			agencyDb(db, agencyA).booking.findUnique({ where: { id: bookingA } }),
-		).rejects.toThrow(/cannot be tenant-scoped/);
+		);
+		expect(error.message).toMatch(/cannot be tenant-scoped/);
+	});
+
+	it("findUniqueOrThrow is refused", async () => {
+		const error = await rejection(() =>
+			agencyDb(db, agencyA).booking.findUniqueOrThrow({
+				where: { id: bookingA },
+			}),
+		);
+		expect(error.message).toMatch(/cannot be tenant-scoped/);
 	});
 
 	it("create pins agencyId even when data says otherwise", async () => {
@@ -128,5 +149,72 @@ describe("agencyDb", () => {
 		expect(created.agencyId).toBe(agencyA);
 
 		await db.booking.delete({ where: { id: created.id } });
+	});
+
+	it("createMany pins agencyId on every row", async () => {
+		const folios = [randomUUID(), randomUUID()];
+		await agencyDb(db, agencyA).booking.createMany({
+			data: folios.map((folio) => ({
+				agencyId: agencyB,
+				folio: `EXP-${folio}`,
+				customerId: customerA,
+				status: "DRAFT" as const,
+			})),
+		});
+
+		const rows = await db.booking.findMany({
+			where: { folio: { in: folios.map((folio) => `EXP-${folio}`) } },
+			select: { agencyId: true },
+		});
+		expect(rows).toHaveLength(2);
+		expect(rows.every((row) => row.agencyId === agencyA)).toBe(true);
+
+		await db.booking.deleteMany({
+			where: { folio: { in: folios.map((folio) => `EXP-${folio}`) } },
+		});
+	});
+
+	it("upsert pins agencyId on the created row", async () => {
+		const folio = `EXP-${randomUUID()}`;
+		const scoped = agencyDb(db, agencyA);
+
+		const first = await scoped.booking.upsert({
+			where: { agencyId_folio: { agencyId: agencyA, folio } },
+			create: {
+				agencyId: agencyB,
+				folio,
+				customerId: customerA,
+				status: "DRAFT",
+			},
+			update: { status: "CONFIRMED" },
+		});
+		expect(first.agencyId).toBe(agencyA);
+
+		await db.booking.delete({ where: { id: first.id } });
+	});
+
+	it("lets a non-tenant model through unscoped", async () => {
+		const rows = await agencyDb(db, agencyA).organization.findMany({
+			where: { id: { in: [agencyA, agencyB] } },
+			select: { id: true },
+		});
+		expect(rows.map((row) => row.id).sort()).toEqual([agencyA, agencyB].sort());
+	});
+
+	it("does not scope a nested create, so it fails closed", async () => {
+		const error = await rejection(() =>
+			agencyDb(db, agencyA).booking.create({
+				data: {
+					agencyId: agencyA,
+					folio: `EXP-${randomUUID()}`,
+					customerId: customerA,
+					status: "DRAFT",
+					items: {
+						create: [{ type: "OTHER", details: { type: "OTHER" } }],
+					},
+				},
+			}),
+		);
+		expect(error).toBeInstanceOf(Error);
 	});
 });

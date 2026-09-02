@@ -1,7 +1,7 @@
 # Producto de viajes — estado de implementación
 
-Fecha de corte: 2026-09-02. Plan aprobado:
-`docs/travel/plan_01.md`.
+Fecha de corte: 2026-09-02. Plan aprobado: `docs/travel/plan_01.md`. La Fase 2
+se corta en dos rebanadas: `docs/travel/plan_02.md` es la Fase 2A.
 
 Este archivo dice qué está hecho, qué falta y en qué orden seguir. Las reglas de
 cada área están en `docs/travel/domain.md`, `docs/travel/money.md` y
@@ -14,8 +14,9 @@ cada área están en `docs/travel/domain.md`, `docs/travel/money.md` y
 | Fase | Alcance | Estado |
 | --- | --- | --- |
 | 0 | Andamiaje del monorepo | HECHO |
-| 1 | `packages/travel-db` (`@travel/db`) | HECHO (falta migración SQL) |
-| 2 | `apps/travel-api` + `@travel/auth` + `@travel/validation` | NO EMPEZADO |
+| 1 | `packages/travel-db` (`@travel/db`) | HECHO |
+| 2A | `@travel/validation`, `@travel/auth`, infra de `apps/travel-api`, `AgencyMiddleware`, módulos `agency`/`users`/`customers`/`quotes`/`bookings` | HECHO |
+| 2B | Módulos `travelers`/`suppliers`/`payments`/`activities`/`fields`/`saved-views`, `currency` completo | NO EMPEZADO |
 | 3 | `apps/travel-app` | NO EMPEZADO |
 | 4 | Comisiones, tareas, PDF, `apps/travel-agent` | FUERA DE ALCANCE INICIAL |
 
@@ -39,7 +40,7 @@ Cambios en archivos existentes:
 
 ---
 
-## Fase 1 — HECHO (menos la migración SQL)
+## Fase 1 — HECHO
 
 Paquete nuevo `packages/travel-db`, publicado como `@travel/db`.
 
@@ -103,92 +104,165 @@ Regla: `agencyId` nunca es input. Viene de `session.activeOrganizationId`.
 - `bunx biome check packages/travel-db` — pasa (2 warnings iguales a `@crm/db`).
 - `bunx oxlint --config .oxlintrc.json packages/travel-db` — pasa.
 
-### Falta en Fase 1
+### Cerrado en Fase 1
 
-- **La migración SQL inicial.** `packages/travel-db/prisma/migrations/` está
-  vacío. La crea `bun run travel:migrate` contra la base local.
-- **Correr `test/tenancy.spec.ts`.** Necesita Postgres 5433 y
-  `TRAVEL_TEST_DATABASE_URL`.
+- **Migración SQL inicial** `20260902204400_init` — cubre 30 modelos y 15 enums.
+- **`test/tenancy.spec.ts`** — 11 casos ahora (6 originales + `findUniqueOrThrow`,
+  `createMany`, `upsert`, paso de modelo no tenant, escritura anidada que falla
+  cerrada). Pasa contra Postgres 5433.
+- **`src/currency.ts` y `src/fx.ts`** — copiados de `@crm/db`. Subpath exports
+  `@travel/db/currency` y `@travel/db/fx`. `ExchangeRate` sigue global.
 
-Comandos:
+---
+
+## Fase 2A — HECHO
+
+Rebanada vertical: los dos paquetes nuevos, la infraestructura de la API, el
+`AgencyMiddleware` y cinco módulos de dominio. Dos agencias operan de punta a
+punta y el aislamiento se mide.
+
+### Archivos
+
+```
+packages/travel-validation/       @travel/validation
+  src/itinerary-item.ts           itineraryDetails (unión discriminada),
+                                  parseItineraryDetails (lanza),
+                                  readItineraryDetails (degrada)
+  src/index.ts                    barril + parse()
+  test/itinerary-item.spec.ts     6 casos
+
+packages/travel-auth/             @travel/auth
+  src/cookies.ts                  AUTH_COOKIE_PREFIX = "travel"
+  src/env.ts                      lee TRAVEL_*
+  src/agency.ts                   AGENCY_ROLES, predicados, agencyRoleOf()
+  src/invitations.ts              sendAgencyInvitation() — opcional, nunca lanza
+  src/auth.ts                     betterAuth: email+password, organización real
+  src/client.ts                   createAuthClient + organizationClient()
+  src/index.ts                    barril
+  README.md                       flujo obligatorio de travel:auth:generate
+
+apps/travel-api/                  travel-api
+  src/main.ts                     TRAVEL_PORT ?? 3011
+  src/create-app.ts              bodyParser:false, helmet, /rest, Swagger
+  src/app.module.ts              LoggingModule primero
+  src/config/env.validation.ts   TRAVEL_*, sin ALLOWED_SIGN_IN
+  src/{database,logging,cache,health}/   copiados de apps/api casi sin cambio
+  src/trpc/                       list-input, error-formatter, openapi,
+                                  middlewares/{auth,domain-error,logging}
+  src/trpc/middlewares/agency.middleware.ts   la pieza nueva
+  src/trpc/context.types.ts      + AgencyTrpcContext
+  src/currency/conversion.service.ts   baseCurrencyFor(), itemFields() x2 lados
+  src/travel/{bulk,values,itinerary}.ts   helpers compartidos
+  src/{agency,users,customers,quotes,bookings}/   módulo de 4 archivos
+  src/generated/server.ts        generado y commiteado (5 routers, 46 procs)
+  scripts/{chmod-trpc-binary.mjs,build-func.mjs}   despliegue serverless
+  api/index.ts  vercel.json  turbo.json  tsconfig.json
+  test/setup.ts  helpers.ts
+  test/agency-id-inputs.spec.ts  ningún esquema Zod acepta agencyId
+  test/tenancy.spec.ts           dos agencias, lectura cruzada da NOT_FOUND
+  test/folio.spec.ts             cada agencia lleva su propia serie
+  test/agency-middleware.spec.ts sin activeOrganizationId da FORBIDDEN
+```
+
+### Decisiones
+
+- **Correo de invitación opcional vía Resend.** `TRAVEL_RESEND_API_KEY` +
+  `TRAVEL_INVITATION_FROM`. Faltando cualquiera, `agency.invite` devuelve un
+  enlace copiable y no lanza.
+- **`travel:auth:generate` propio.** Script con nombre `travel:*` para que el
+  fan-out de la raíz no lo corra junto al del CRM. Revisar el diff a mano: el
+  generador borra las relaciones inversas de `Organization`.
+
+### Cambios fuera de los paquetes nuevos
+
+| Archivo | Cambio |
+| --- | --- |
+| `.env.example` | `TRAVEL_RESEND_API_KEY`, `TRAVEL_INVITATION_FROM` |
+| `turbo.json` | ambas en `globalPassThroughEnv` |
+| `package.json` | alias `travel:auth:generate` |
+| `.oxlintrc.json` | overrides de `packages/travel-validation/src/**` y `apps/travel-api/src/logging/**` |
+| `packages/travel-db/package.json` | exports `./currency` y `./fx` |
+| `packages/travel-db/test/tenancy.spec.ts` | 5 casos nuevos |
+
+### Verificado
+
+- `bun run check-types` — 19/19.
+- `bun run lint` — 13/13 (warnings de barrel iguales a `@crm/auth`).
+- `bun run lint:slop` — pasa.
+- `bun run --filter=travel-api test` — 64 casos, contra Postgres 5433.
+- `bun run --filter=@travel/db test` — 11 casos.
+- `bun run --filter=@travel/validation test` — 6 casos.
+
+### Alcance de 2A
+
+- **`customers`** — lista con facetas (tipo, dueño), ficha, archivar/restaurar/
+  purgar, bulk, opciones para pickers.
+- **`quotes`** — cotización con folio consecutivo, `setOptions` reemplaza el
+  conjunto de opciones y sus renglones, `accept` crea la reserva copiando los
+  renglones de la opción elegida.
+- **`bookings`** — expediente con folio, `setItems` reemplaza renglones,
+  `setTravelers` crea `Traveler` + `BookingTraveler` en una transacción,
+  totales en moneda base.
+- **`agency`** — perfil (`AgencySettings`), miembros, invitaciones con enlace,
+  `setRole`/`removeMember` con protección del último `owner` (`FOR UPDATE`).
+- **`users`** — `me` y lista de asesores **filtrada por membresía**.
+- **`currency`** — solo `ConversionService`. La moneda base sale de
+  `AgencySettings.baseCurrency`, una por agencia. `itemFields` corre dos veces
+  por renglón: lado costo y lado venta.
+
+### Reglas del `agencyDb` que respetan los servicios
+
+1. **Escrituras anidadas sin alcance.** Los hijos se crean en llamadas aparte
+   dentro del mismo `$transaction`, cada una por el cliente con alcance.
+2. **`findUnique` lanza.** `AgencySettings` se lee por `findFirst`.
+3. **`$queryRaw` esquiva la extensión.** `nextCounter` pasa `agencyId` a mano;
+   `create`/`accept` corren en `this.db.$transaction` con `agencyId` explícito en
+   el `data` y en cada `where`.
+4. **Ninguna FK compuesta.** Cada `customerId`/`quoteId` entrante se relee por el
+   cliente con alcance antes de escribir.
+
+### Comandos
 
 ```sh
 docker compose up -d
-cp .env.example .env          # llenar DATABASE_URL y TRAVEL_DATABASE_URL
 bun install
-bun run travel:migrate        # crea la migración inicial
-bun run travel:test           # crea travel_test y migra
+bun run travel:deploy
+bun run travel:test
 bun run --filter=@travel/db test
-bun run travel:seed
+bun run --filter=travel-api test
+bun run --filter=@travel/validation test
 ```
 
 ---
 
-## Fase 2 — NO EMPEZADO — `apps/travel-api`
+## Fase 2B — NO EMPEZADO — el resto de `apps/travel-api`
 
-### 2.1 Paquete `packages/travel-auth` (`@travel/auth`)
+La infraestructura, `@travel/auth`, `@travel/validation` y el `AgencyMiddleware`
+ya existen (Fase 2A). 2B agrega módulos de dominio a la misma app, con la misma
+forma de 4 archivos y las mismas reglas del `agencyDb`.
 
-Fork de `packages/auth`. Diferencias:
+**Módulos que faltan:** `travelers`, `suppliers`, `payments`, `activities`,
+`fields`, `saved-views`. Más el módulo `currency` completo: `RatesService`,
+`RatesController` (cron `TRAVEL_CRON_SECRET`, falla cerrado), `CurrencyService`
+(pantalla de ajustes), y el cron de tasas en `vercel.json`.
 
-- `organization` plugin como tenencia real: `allowUserToCreateOrganization: true`,
-  flujo de invitaciones activo.
-- `emailAndPassword: { enabled: true }`, Google opcional y separado del CRM.
-- Sin `ALLOWED_SIGN_IN` (es SaaS).
-- `AUTH_COOKIE_PREFIX = "travel"` en `advanced.cookiePrefix` y en `proxy.ts`.
-- Roles: `owner`, `admin`, `agent`, `accountant`. Predicados `canManageAgency`,
-  `canSeeMargins`, `canRecordPayment` usados en servicio y UI.
-- Script `auth:generate` propio que escribe en
-  `packages/travel-db/prisma/schema.prisma`, con su tarea de turbo.
-- `prismaAdapter(db)` apuntando al singleton de `@travel/db`.
+**Trae consigo:**
 
-### 2.2 Paquete `packages/travel-validation` (`@travel/validation`)
+- `ActivityStampService` de `apps/api/src/crm/` → `apps/travel-api/src/travel/`.
+  En 2A `Customer.lastActivityAt` y `Booking.lastActivityAt` quedan nulos.
+- `@travel/db/src/fields.ts` y `fields-shape.ts`, copiados de `@crm/db`.
+- `@travel/validation/saved-view`, copiado de `packages/validation`.
+- Override de `apps/travel-api/src/fields/**` en `.oxlintrc.json`, gemelo del de
+  `apps/api/src/fields/**`.
 
-Fork del patrón de `packages/validation`. Un módulo Zod por concepto, un
-subpath export por módulo. Primer módulo obligatorio:
-`src/itinerary-item.ts` — `itineraryDetails` como `z.discriminatedUnion("type", …)`
-con `parseItineraryDetails(value: unknown)`. Patrón:
-`packages/validation/src/agent-manifest.ts`.
+**`payments`:** `OVERDUE` no es un estado guardado. Se deriva de
+`status = SCHEDULED AND dueDate < now()`.
 
-### 2.3 App `apps/travel-api` (`travel-api`)
-
-Copiar de `apps/api` y adaptar:
-
-- Seis carpetas de infra casi sin cambios: `config`, `database`, `trpc`,
-  `logging`, `cache`, `health`.
-- `src/main.ts` — `PORT` → `TRAVEL_PORT ?? 3011`.
-- `src/create-app.ts` — `bodyParser: false`, `helmet()`, `ValidationPipe`
-  global, puente REST `/rest` antes de `app.init()`.
-- `src/app.module.ts` — `LoggingModule` primero.
-- `src/config/env.validation.ts` — variables `TRAVEL_*`.
-- `package.json` — nombre `travel-api`, `exports: { "./app-router":
-  "./src/generated/server.ts" }`.
-- `turbo.json` — cadena `trpc:generate` → `check-types`, `passThroughEnv` con
-  `TRAVEL_*`.
-- `api/index.ts`, `scripts/build-func.mjs`, `vercel.json` — despliegue
-  serverless. Migraciones solo en build de producción.
-- `src/generated/server.ts` — generado y commiteado.
-
-**Pieza nueva:** `src/trpc/middlewares/agency.middleware.ts`. Corre después de
-`AuthMiddleware`. Lee `session.activeOrganizationId`, busca el `Member`, y
-estrecha el contexto a `AgencyTrpcContext = AuthedTrpcContext & { agencyId,
-role }`. Todo router de dominio lleva
-`@UseMiddlewares(AuthMiddleware, AgencyMiddleware)` a nivel de clase.
-
-**Módulos de dominio** (forma de 4 archivos: `module`/`router`/`service`/
-`contracts`): `customers`, `travelers`, `suppliers`, `quotes`, `bookings`,
-`payments`, `fields`, `saved-views`, `currency`, `agency`, `users`, `activities`.
-
-Copiar `apps/api/src/trpc/list-input.ts` entero (genérico).
-
-Cada servicio: `const scoped = agencyDb(this.raw, ctx.agencyId)` por método.
-Nunca toca el cliente crudo. Cada FK entrante se valida contra `ctx.agencyId`
-antes de escribir (ver Issue 3 del reporte de Fase 1).
-
-### Verificación Fase 2
+### Verificación Fase 2B
 
 ```sh
 bun run travel:test
-bun run --filter=travel-api test    # un spec por servicio: ningún input Zod acepta agencyId
+bun run --filter=travel-api test
 curl localhost:3011/health
 open localhost:3011                  # Swagger con el puente REST
 ```

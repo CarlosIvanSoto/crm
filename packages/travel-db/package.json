@@ -9,7 +9,9 @@
 		"./tenancy": "./src/tenancy.ts",
 		"./enums": "./src/generated/prisma/enums.ts",
 		"./json": "./src/json.ts",
-		"./folio": "./src/folio.ts"
+		"./folio": "./src/folio.ts",
+		"./currency": "./src/currency.ts",
+		"./fx": "./src/fx.ts"
 	},
 	"scripts": {
 		"build": "prisma generate",

@@ -53,6 +53,12 @@
 			}
 		},
 		{
+			"files": ["packages/travel-validation/src/**"],
+			"rules": {
+				"anti-slop/no-unknown-parameters": "off"
+			}
+		},
+		{
 			"files": ["packages/travel-db/src/tenancy.ts"],
 			"rules": {
 				"anti-slop/no-unsafe-dictionary-type": "off",
@@ -64,6 +70,7 @@
 			"files": [
 				"packages/telemetry/src/**",
 				"apps/api/src/logging/**",
+				"apps/travel-api/src/logging/**",
 				"packages/db/src/fields.ts",
 				"packages/db/src/fields-shape.ts",
 				"apps/api/src/fields/**",
