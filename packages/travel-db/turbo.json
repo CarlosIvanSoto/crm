@@ -1,0 +1,60 @@
+{
+	"$schema": "https://turborepo.dev/schema.json",
+	"extends": ["//"],
+	"tasks": {
+		"build": {
+			"inputs": ["$TURBO_DEFAULT$", "prisma/**"],
+			"outputs": ["src/generated/**"],
+			"passThroughEnv": ["TRAVEL_DATABASE_URL"]
+		},
+		"dev:prepare": {
+			"cache": false,
+			"inputs": [
+				"prisma/schema.prisma",
+				"prisma/migrations/**",
+				"prisma.config.ts",
+				"scripts/prepare-dev.ts",
+				"scripts/require-local-db.ts"
+			],
+			"outputs": ["src/generated/**"],
+			"passThroughEnv": ["ALLOW_REMOTE_DB", "TRAVEL_DATABASE_URL"]
+		},
+		"travel:generate": {
+			"inputs": ["$TURBO_DEFAULT$", "prisma/**"],
+			"outputs": ["src/generated/**"],
+			"passThroughEnv": ["TRAVEL_DATABASE_URL"]
+		},
+		"travel:deploy": {
+			"cache": false,
+			"passThroughEnv": ["TRAVEL_DATABASE_URL"]
+		},
+		"travel:migrate": {
+			"cache": false,
+			"interactive": true,
+			"passThroughEnv": ["TRAVEL_DATABASE_URL"]
+		},
+		"travel:push": {
+			"cache": false,
+			"interactive": true,
+			"passThroughEnv": ["TRAVEL_DATABASE_URL"]
+		},
+		"travel:reset": {
+			"cache": false,
+			"interactive": true,
+			"passThroughEnv": ["TRAVEL_DATABASE_URL"]
+		},
+		"travel:seed": {
+			"cache": false,
+			"passThroughEnv": ["TRAVEL_BLOB_READ_WRITE_TOKEN", "TRAVEL_DATABASE_URL"]
+		},
+		"travel:studio": {
+			"cache": false,
+			"persistent": true,
+			"passThroughEnv": ["TRAVEL_DATABASE_URL"]
+		},
+		"check-types": {
+			"dependsOn": ["$TURBO_EXTENDS$", "build"],
+			"passThroughEnv": ["TRAVEL_DATABASE_URL"]
+		}
+	}
+}

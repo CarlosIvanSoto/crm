@@ -95,6 +95,35 @@
 					}
 				}
 			}
+		},
+		{
+			"includes": ["apps/travel-app/**"],
+			"linter": {
+				"domains": {
+					"next": "recommended",
+					"react": "recommended"
+				}
+			}
+		},
+		{
+			"includes": ["apps/travel-api/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"useImportType": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": ["apps/travel-api/src/**"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noConsole": "error"
+					}
+				}
+			}
 		}
 	]
 }

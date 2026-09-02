@@ -21,7 +21,14 @@
 		"db:reset": "turbo run db:reset",
 		"db:seed": "turbo run db:seed",
 		"db:studio": "turbo run db:studio",
-		"db:test": "bun run --filter=@crm/db db:test"
+		"db:test": "bun run --filter=@crm/db db:test",
+		"travel:deploy": "turbo run travel:deploy --filter=@travel/db",
+		"travel:migrate": "turbo run travel:migrate --filter=@travel/db",
+		"travel:push": "turbo run travel:push --filter=@travel/db",
+		"travel:reset": "turbo run travel:reset --filter=@travel/db",
+		"travel:seed": "turbo run travel:seed --filter=@travel/db",
+		"travel:studio": "turbo run travel:studio --filter=@travel/db",
+		"travel:test": "bun run --filter=@travel/db travel:test"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.10",
