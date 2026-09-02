@@ -1,0 +1,963 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  runtime                = "nodejs"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = ""
+  previewFeatures        = ["partialIndexes"]
+}
+
+model User {
+  id            String   @id
+  name          String
+  email         String
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions Session[]
+  accounts Account[]
+
+  members     Member[]
+  invitations Invitation[]
+  apiKeys     Apikey[]
+
+  ownedCustomers   Customer[] @relation("CustomerOwner")
+  ownedQuotes      Quote[]    @relation("QuoteOwner")
+  ownedBookings    Booking[]  @relation("BookingOwner")
+  authoredActivity Activity[] @relation("ActivityAuthor")
+  uploadedDocs     Document[] @relation("DocumentUploader")
+  fieldValues      FieldValue[] @relation("FieldValueUser")
+  savedViews       SavedView[]  @relation("SavedViewOwner")
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  activeOrganizationId String?
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model RateLimit {
+  id          String @id
+  key         String
+  count       Int
+  lastRequest BigInt
+
+  @@unique([key])
+  @@map("rateLimit")
+}
+
+model Organization {
+  id        String   @id
+  name      String
+  slug      String
+  logo      String?
+  createdAt DateTime
+  metadata  String?
+
+  members     Member[]
+  invitations Invitation[]
+
+  settings         AgencySettings?
+  counters         AgencyCounter[]
+  customers        Customer[]
+  travelers        Traveler[]
+  travelerLoyalty  TravelerLoyalty[]
+  suppliers        Supplier[]
+  quotes           Quote[]
+  quoteOptions     QuoteOption[]
+  quoteItems       QuoteItem[]
+  bookings         Booking[]
+  bookingTravelers BookingTraveler[]
+  bookingItems     BookingItem[]
+  payments         Payment[]
+  supplierPayments SupplierPayment[]
+  documents        Document[]
+  activities       Activity[]
+  fieldDefinitions FieldDefinition[]
+  fieldOptions     FieldOption[]
+  fieldValues      FieldValue[]
+  savedViews       SavedView[]
+
+  @@unique([slug])
+  @@map("organization")
+}
+
+model Member {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String       @default("agent")
+  createdAt      DateTime
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("member")
+}
+
+model Invitation {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           String?
+  status         String       @default("pending")
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  inviterId      String
+  user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("invitation")
+}
+
+model Apikey {
+  id                  String    @id
+  configId            String    @default("default")
+  name                String?
+  start               String?
+  referenceId         String
+  user                User      @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+  prefix              String?
+  key                 String
+  refillInterval      Int?
+  refillAmount        Int?
+  lastRefillAt        DateTime?
+  enabled             Boolean?  @default(true)
+  rateLimitEnabled    Boolean?  @default(true)
+  rateLimitTimeWindow Int?
+  rateLimitMax        Int?
+  requestCount        Int?      @default(0)
+  remaining           Int?
+  lastRequest         DateTime?
+  expiresAt           DateTime?
+  createdAt           DateTime
+  updatedAt           DateTime
+  permissions         String?
+  metadata            String?
+
+  @@index([referenceId])
+  @@index([configId])
+  @@index([key])
+  @@map("apikey")
+}
+
+model AgencySettings {
+  agencyId String       @id
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  legalName    String?
+  taxId        String?
+  taxRegime    String?
+  addressJson  Json?
+  phone        String?
+  email        String?
+  baseCurrency String  @default("USD")
+  timezone     String  @default("America/Mexico_City")
+  logoUrl      String?
+  quotePrefix  String  @default("COT")
+  bookingPrefix String @default("EXP")
+  defaultTerms String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("agencySettings")
+}
+
+model AgencyCounter {
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  kind     String
+  value    Int          @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  @@id([agencyId, kind])
+  @@map("agencyCounter")
+}
+
+enum CustomerType {
+  PERSON
+  COMPANY
+}
+
+model Customer {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  type      CustomerType @default(PERSON)
+  name      String
+  legalName String?
+  taxId     String?
+  taxRegime String?
+  email     String?
+  phone     String?
+  whatsapp  String?
+  addressJson Json?
+
+  ownerId String?
+  owner   User?   @relation("CustomerOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  lastActivityAt DateTime?
+  archivedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  travelers  Traveler[]
+  quotes     Quote[]
+  bookings   Booking[]
+  activities Activity[]
+
+  @@index([agencyId])
+  @@index([agencyId, lastActivityAt])
+  @@index([agencyId, archivedAt])
+  @@index([ownerId])
+  @@map("customer")
+}
+
+enum TravelDocumentType {
+  PASSPORT
+  ID
+  VISA
+}
+
+model Traveler {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  firstName String
+  lastName  String
+  dateOfBirth DateTime?
+  gender      String?
+  nationality String?
+
+  documentType          TravelDocumentType?
+  documentNumber        String?
+  documentIssuedCountry String?
+  documentExpiresAt     DateTime?
+
+  dietaryNotes         String?
+  medicalNotes         String?
+  emergencyContactJson Json?
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  loyalty          TravelerLoyalty[]
+  bookingTravelers BookingTraveler[]
+  documents        Document[]
+
+  @@index([agencyId])
+  @@index([agencyId, lastName, firstName])
+  @@index([agencyId, documentExpiresAt])
+  @@index([customerId])
+  @@map("traveler")
+}
+
+model TravelerLoyalty {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  travelerId String
+  traveler   Traveler @relation(fields: [travelerId], references: [id], onDelete: Cascade)
+  supplierId String?
+  supplier   Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  programName String
+  number      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agencyId])
+  @@index([travelerId])
+  @@index([supplierId])
+  @@map("travelerLoyalty")
+}
+
+enum SupplierKind {
+  WHOLESALER
+  DMC
+  HOTEL
+  AIRLINE
+  CRUISE
+  INSURANCE
+  TRANSFER
+  TOUR_OPERATOR
+  CAR_RENTAL
+  OTHER
+}
+
+model Supplier {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  kind  SupplierKind @default(OTHER)
+  name  String
+  email String?
+  phone String?
+
+  defaultCommissionRate Decimal? @db.Decimal(6, 4)
+  paymentTermsDays      Int?
+  defaultCurrency       String?
+  notes                 String?
+
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  loyalty          TravelerLoyalty[]
+  quoteItems       QuoteItem[]
+  bookingItems     BookingItem[]
+  supplierPayments SupplierPayment[]
+
+  @@index([agencyId])
+  @@index([agencyId, kind])
+  @@index([agencyId, archivedAt])
+  @@map("supplier")
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+model Quote {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  folio      String
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  ownerId    String?
+  owner      User?    @relation("QuoteOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  status      QuoteStatus @default(DRAFT)
+  validUntil  DateTime?
+  travelStartDate DateTime?
+  travelEndDate   DateTime?
+  paxAdults   Int @default(1)
+  paxChildren Int @default(0)
+  paxInfants  Int @default(0)
+  destination String?
+  currency    String @default("USD")
+  notes       String?
+  terms       String?
+
+  sentAt     DateTime?
+  decidedAt  DateTime?
+  archivedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  options    QuoteOption[]
+  booking    Booking?
+  activities Activity[]
+
+  @@unique([agencyId, folio])
+  @@index([agencyId])
+  @@index([agencyId, status])
+  @@index([agencyId, createdAt])
+  @@index([customerId])
+  @@index([ownerId])
+  @@map("quote")
+}
+
+model QuoteOption {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  label         String
+  position      Int     @default(0)
+  isRecommended Boolean @default(false)
+
+  sellTotalBase Decimal? @db.Decimal(24, 4)
+  costTotalBase Decimal? @db.Decimal(24, 4)
+  baseCurrency  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items QuoteItem[]
+
+  @@index([agencyId])
+  @@index([quoteId, position])
+  @@map("quoteOption")
+}
+
+enum ItineraryItemType {
+  FLIGHT
+  HOTEL
+  TRANSFER
+  TOUR
+  CRUISE
+  INSURANCE
+  CAR_RENTAL
+  PACKAGE
+  OTHER
+}
+
+enum ItineraryItemStatus {
+  QUOTED
+  REQUESTED
+  CONFIRMED
+  CANCELLED
+}
+
+model QuoteItem {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  quoteOptionId String
+  quoteOption   QuoteOption @relation(fields: [quoteOptionId], references: [id], onDelete: Cascade)
+
+  type          ItineraryItemType
+  supplierId    String?
+  supplier      Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  confirmationCode String?
+  status        ItineraryItemStatus @default(QUOTED)
+
+  startsAt      DateTime?
+  endsAt        DateTime?
+  startLocation String?
+  endLocation   String?
+  description   String?
+  paxCount      Int      @default(1)
+  position      Int      @default(0)
+
+  costAmount     Decimal? @db.Decimal(14, 2)
+  costCurrency   String?
+  sellAmount     Decimal? @db.Decimal(14, 2)
+  sellCurrency   String?
+  costBaseAmount Decimal? @db.Decimal(24, 4)
+  sellBaseAmount Decimal? @db.Decimal(24, 4)
+  baseCurrency   String?
+  fxRate         Decimal? @db.Decimal(20, 10)
+  fxRateAt       DateTime?
+
+  details Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agencyId])
+  @@index([quoteOptionId, position])
+  @@index([supplierId])
+  @@map("quoteItem")
+}
+
+enum BookingStatus {
+  DRAFT
+  CONFIRMED
+  TRAVELING
+  COMPLETED
+  CANCELLED
+}
+
+model Booking {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  folio      String
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  ownerId    String?
+  owner      User?    @relation("BookingOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  quoteId    String?  @unique
+  quote      Quote?   @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+
+  status      BookingStatus @default(DRAFT)
+  travelStartDate DateTime?
+  travelEndDate   DateTime?
+  destination String?
+  currency    String @default("USD")
+
+  sellTotalBase Decimal? @db.Decimal(24, 4)
+  costTotalBase Decimal? @db.Decimal(24, 4)
+  baseCurrency  String?
+
+  lastActivityAt DateTime?
+  archivedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  travelers        BookingTraveler[]
+  items            BookingItem[]
+  payments         Payment[]
+  supplierPayments SupplierPayment[]
+  documents        Document[]
+  activities       Activity[]
+
+  @@unique([agencyId, folio])
+  @@index([agencyId])
+  @@index([agencyId, status])
+  @@index([agencyId, lastActivityAt])
+  @@index([agencyId, travelStartDate])
+  @@index([agencyId, archivedAt])
+  @@index([customerId])
+  @@index([ownerId])
+  @@map("booking")
+}
+
+enum PaxType {
+  ADULT
+  CHILD
+  INFANT
+}
+
+model BookingTraveler {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  bookingId  String
+  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  travelerId String
+  traveler   Traveler @relation(fields: [travelerId], references: [id], onDelete: Restrict)
+
+  paxType PaxType @default(ADULT)
+  isLead  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@unique([bookingId, travelerId])
+  @@index([agencyId])
+  @@index([travelerId])
+  @@map("bookingTraveler")
+}
+
+model BookingItem {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  type          ItineraryItemType
+  supplierId    String?
+  supplier      Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  confirmationCode String?
+  status        ItineraryItemStatus @default(QUOTED)
+
+  startsAt      DateTime?
+  endsAt        DateTime?
+  startLocation String?
+  endLocation   String?
+  description   String?
+  paxCount      Int      @default(1)
+  position      Int      @default(0)
+
+  costAmount     Decimal? @db.Decimal(14, 2)
+  costCurrency   String?
+  sellAmount     Decimal? @db.Decimal(14, 2)
+  sellCurrency   String?
+  costBaseAmount Decimal? @db.Decimal(24, 4)
+  sellBaseAmount Decimal? @db.Decimal(24, 4)
+  baseCurrency   String?
+  fxRate         Decimal? @db.Decimal(20, 10)
+  fxRateAt       DateTime?
+
+  details Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  supplierPayments SupplierPayment[]
+
+  @@index([agencyId])
+  @@index([bookingId, position])
+  @@index([supplierId])
+  @@map("bookingItem")
+}
+
+enum PaymentStatus {
+  SCHEDULED
+  PAID
+  VOID
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CARD
+  LINK
+  OTHER
+}
+
+model Payment {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  dueDate  DateTime
+  amount   Decimal  @db.Decimal(14, 2)
+  currency String
+
+  baseAmount   Decimal? @db.Decimal(24, 4)
+  baseCurrency String?
+  fxRate       Decimal? @db.Decimal(20, 10)
+  fxRateAt     DateTime?
+
+  status    PaymentStatus  @default(SCHEDULED)
+  method    PaymentMethod?
+  paidAt    DateTime?
+  reference String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agencyId])
+  @@index([agencyId, status, dueDate])
+  @@index([bookingId])
+  @@map("payment")
+}
+
+model SupplierPayment {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  supplierId    String
+  supplier      Supplier     @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  bookingId     String
+  booking       Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingItemId String?
+  bookingItem   BookingItem? @relation(fields: [bookingItemId], references: [id], onDelete: SetNull)
+
+  dueDate  DateTime
+  amount   Decimal  @db.Decimal(14, 2)
+  currency String
+
+  baseAmount   Decimal? @db.Decimal(24, 4)
+  baseCurrency String?
+  fxRate       Decimal? @db.Decimal(20, 10)
+  fxRateAt     DateTime?
+
+  status    PaymentStatus  @default(SCHEDULED)
+  method    PaymentMethod?
+  paidAt    DateTime?
+  reference String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agencyId])
+  @@index([agencyId, status, dueDate])
+  @@index([supplierId])
+  @@index([bookingId])
+  @@map("supplierPayment")
+}
+
+enum RateSource {
+  FETCHED
+  MANUAL
+}
+
+model ExchangeRate {
+  id            String     @id @default(cuid())
+  baseCurrency  String
+  quoteCurrency String
+  rate          Decimal    @db.Decimal(20, 10)
+  asOf          DateTime
+  source        RateSource
+  provider      String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([baseCurrency, quoteCurrency, source])
+  @@index([baseCurrency, quoteCurrency])
+  @@map("exchangeRate")
+}
+
+enum DocumentKind {
+  VOUCHER
+  TICKET
+  INVOICE
+  PASSPORT
+  VISA
+  INSURANCE_POLICY
+  OTHER
+}
+
+model Document {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  bookingId  String?
+  booking    Booking?  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  travelerId String?
+  traveler   Traveler? @relation(fields: [travelerId], references: [id], onDelete: Cascade)
+
+  kind        DocumentKind
+  url         String
+  filename    String
+  contentType String?
+  sizeBytes   Int?
+
+  uploadedById String
+  uploadedBy   User   @relation("DocumentUploader", fields: [uploadedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([agencyId])
+  @@index([bookingId])
+  @@index([travelerId])
+  @@map("document")
+}
+
+enum ActivityType {
+  NOTE
+  CALL
+  EMAIL
+  MEETING
+  TASK
+  SYSTEM
+}
+
+model Activity {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  type    ActivityType
+  subject String?
+  body    String?
+
+  occurredAt  DateTime?
+  dueAt       DateTime?
+  completedAt DateTime?
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  quoteId    String?
+  quote      Quote?    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  bookingId  String?
+  booking    Booking?  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   User   @relation("ActivityAuthor", fields: [createdById], references: [id])
+  meta        Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agencyId, createdAt])
+  @@index([customerId, createdAt])
+  @@index([quoteId, createdAt])
+  @@index([bookingId, createdAt])
+  @@index([dueAt])
+  @@index([createdById])
+  @@map("activity")
+}
+
+enum FieldEntity {
+  CUSTOMER
+  TRAVELER
+  QUOTE
+  BOOKING
+  SUPPLIER
+}
+
+enum FieldType {
+  TEXT
+  LONG_TEXT
+  NUMBER
+  DATE
+  CHECKBOX
+  SELECT
+  URL
+  EMAIL
+  PHONE
+  USER
+}
+
+model FieldDefinition {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  entity FieldEntity
+  key    String
+  label  String
+  type   FieldType
+
+  required     Boolean @default(false)
+  showOnSheet  Boolean @default(true)
+  showOnTable  Boolean @default(false)
+  showOnFilter Boolean @default(false)
+  position     Int
+
+  archivedAt DateTime?
+
+  options FieldOption[]
+  values  FieldValue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([agencyId, entity, key])
+  @@index([agencyId, entity, position])
+  @@map("fieldDefinition")
+}
+
+model FieldOption {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  fieldId String
+  field   FieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  label    String
+  position Int
+
+  archivedAt DateTime?
+  values     FieldValue[]
+
+  @@index([agencyId])
+  @@index([fieldId, position])
+  @@map("fieldOption")
+}
+
+model FieldValue {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  fieldId String
+  field   FieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  customerId String?
+  quoteId    String?
+  bookingId  String?
+  travelerId String?
+  supplierId String?
+
+  text     String?
+  number   Decimal?     @db.Decimal(24, 4)
+  date     DateTime?
+  bool     Boolean?
+  optionId String?
+  option   FieldOption? @relation(fields: [optionId], references: [id], onDelete: SetNull)
+  userId   String?
+  user     User?        @relation("FieldValueUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([fieldId, customerId])
+  @@unique([fieldId, quoteId])
+  @@unique([fieldId, bookingId])
+  @@unique([fieldId, travelerId])
+  @@unique([fieldId, supplierId])
+  @@index([agencyId])
+  @@index([fieldId, text])
+  @@index([fieldId, number])
+  @@index([fieldId, date])
+  @@index([optionId])
+  @@index([userId])
+  @@map("fieldValue")
+}
+
+model SavedView {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  entity  FieldEntity
+  name    String
+  shared  Boolean     @default(false)
+  filters Json
+
+  ownerId String
+  owner   User   @relation("SavedViewOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([agencyId, entity, ownerId, name])
+  @@index([agencyId, entity, shared])
+  @@map("savedView")
+}
