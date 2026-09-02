@@ -1,10 +1,17 @@
 import { describe, expect, it } from "bun:test";
 import { z } from "zod";
+import * as activityContracts from "../src/activities/activities.contracts";
 import * as agencyContracts from "../src/agency/agency.contracts";
 import * as bookingContracts from "../src/bookings/bookings.contracts";
+import * as currencyContracts from "../src/currency/currency.contracts";
 import * as customerContracts from "../src/customers/customers.contracts";
+import * as fieldContracts from "../src/fields/fields.contracts";
+import * as paymentContracts from "../src/payments/payments.contracts";
 import * as quoteContracts from "../src/quotes/quotes.contracts";
+import * as savedViewContracts from "../src/saved-views/saved-views.contracts";
+import * as supplierContracts from "../src/suppliers/suppliers.contracts";
 import { itineraryItemInput } from "../src/travel/itinerary";
+import * as travelerContracts from "../src/travelers/travelers.contracts";
 
 /**
  * Rule 1 from docs/travel/domain.md: agencyId is never an input. It comes from
@@ -43,10 +50,17 @@ function keysOf(schema: z.ZodTypeAny): string[] {
 }
 
 const schemas = [
+	...collect("activities", activityContracts),
 	...collect("agency", agencyContracts),
 	...collect("bookings", bookingContracts),
+	...collect("currency", currencyContracts),
 	...collect("customers", customerContracts),
+	...collect("fields", fieldContracts),
+	...collect("payments", paymentContracts),
 	...collect("quotes", quoteContracts),
+	...collect("savedViews", savedViewContracts),
+	...collect("suppliers", supplierContracts),
+	...collect("travelers", travelerContracts),
 	{ name: "itinerary.itineraryItemInput", schema: itineraryItemInput },
 ];
 
@@ -58,6 +72,6 @@ describe("no input schema accepts agencyId", () => {
 	}
 
 	it("checked a meaningful number of schemas", () => {
-		expect(schemas.length).toBeGreaterThan(20);
+		expect(schemas.length).toBeGreaterThan(40);
 	});
 });

@@ -13,13 +13,42 @@ import { z } from "zod";
 
 const t = initTRPC.create();
 const publicProcedure = t.procedure;
+import { timelineInput, timelineOutput, timelineCountsInput, timelineCountsOutput, myTasksInput, myTasksOutput, activityCreateInput, activityCreateOutput, completeInput, completeOutput } from "../activities/activities.contracts";
 import { agencyProfileOutput, updateAgencyProfileInput, agencyMemberListOutput, invitationListOutput, inviteMemberInput, inviteMemberOutput, invitationIdInput, setMemberRoleInput, agencyMemberOutput, memberIdInput } from "../agency/agency.contracts";
 import { bookingListInput, bookingListOutput, bookingIdInput, bookingDetailOutput, bookingCreateInput, bookingSummaryOutput, bookingUpdateArgs, setBookingItemsInput, setBookingTravelersInput, bookingArchiveResultOutput, bookingBulkInput, bookingBulkResultOutput } from "../bookings/bookings.contracts";
+import { currencySettingsOutput, setBaseCurrencyInput, setManualRateInput, removeManualRateInput } from "../currency/currency.contracts";
 import { customerListInput, customerListOutput, customerIdInput, customerDetailOutput, customerOptionsInput, customerOptionOutput, customerCreateInput, customerSummaryOutput, customerUpdateArgs, customerArchiveResultOutput, customerBulkOwnerInput, customerBulkResultOutput, customerBulkInput } from "../customers/customers.contracts";
+import { fieldListInput, fieldListOutput, fieldByKeyInput, serializedFieldOutput, fieldEntityInput, fieldFiltersOutput, fieldIdInput, fieldCoverageOutput, fieldValuesInput, recordFieldListOutput, fieldCreateInput, fieldUpdateArgs, fieldReorderInput, fieldReorderOutput, setFieldValuesInput, fieldDeleteOutput } from "../fields/fields.contracts";
+import { paymentListInput, paymentListOutput, addPaymentInput, paymentSummaryOutput, recordPaymentInput, paymentIdInput, paymentDeleteOutput, addPayableInput } from "../payments/payments.contracts";
 import { quoteListInput, quoteListOutput, quoteIdInput, quoteDetailOutput, quoteCreateInput, quoteSummaryOutput, quoteUpdateArgs, setQuoteOptionsInput, acceptQuoteInput, acceptQuoteOutput, quoteArchiveResultOutput, quoteBulkInput, quoteBulkResultOutput } from "../quotes/quotes.contracts";
+import { savedViewListInput, savedViewListOutput, savedViewCreateInput, savedViewOutput, savedViewUpdateArgs, savedViewIdInput, savedViewDeleteOutput } from "../saved-views/saved-views.contracts";
+import { supplierListInput, supplierListOutput, supplierIdInput, supplierDetailOutput, supplierOptionsInput, supplierOptionOutput, supplierCreateInput, supplierSummaryOutput, supplierUpdateArgs, supplierArchiveResultOutput, supplierBulkInput, supplierBulkResultOutput } from "../suppliers/suppliers.contracts";
+import { travelerListInput, travelerListOutput, travelerIdInput, travelerDetailOutput, travelerOptionsInput, travelerOptionOutput, travelerCreateInput, travelerSummaryOutput, travelerUpdateArgs, setLoyaltyInput, travelerArchiveResultOutput, travelerBulkInput, travelerBulkResultOutput } from "../travelers/travelers.contracts";
 import { userOptionOutput } from "../users/users.contracts";
 
 const appRouter = t.router({
+  activities: t.router({
+    timeline: publicProcedure
+      .input(timelineInput)
+      .output(timelineOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    timelineCounts: publicProcedure
+      .input(timelineCountsInput)
+      .output(timelineCountsOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    myTasks: publicProcedure
+      .input(myTasksInput)
+      .output(myTasksOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    create: publicProcedure
+      .input(activityCreateInput)
+      .output(activityCreateOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    complete: publicProcedure
+      .input(completeInput)
+      .output(completeOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
   agency: t.router({
     profile: publicProcedure
       .output(agencyProfileOutput)
@@ -101,6 +130,26 @@ const appRouter = t.router({
       .output(bookingBulkResultOutput)
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
+  currency: t.router({
+    settings: publicProcedure
+      .output(currencySettingsOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    setBaseCurrency: publicProcedure
+      .input(setBaseCurrencyInput)
+      .output(currencySettingsOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    setManualRate: publicProcedure
+      .input(setManualRateInput)
+      .output(currencySettingsOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    removeManualRate: publicProcedure
+      .input(removeManualRateInput)
+      .output(currencySettingsOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    refreshRates: publicProcedure
+      .output(currencySettingsOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
   customers: t.router({
     list: publicProcedure
       .input(customerListInput)
@@ -151,6 +200,94 @@ const appRouter = t.router({
       .output(customerBulkResultOutput)
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
+  fields: t.router({
+    list: publicProcedure
+      .input(fieldListInput)
+      .output(fieldListOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    byKey: publicProcedure
+      .input(fieldByKeyInput)
+      .output(serializedFieldOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    filters: publicProcedure
+      .input(fieldEntityInput)
+      .output(fieldFiltersOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    coverage: publicProcedure
+      .input(fieldIdInput)
+      .output(fieldCoverageOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    values: publicProcedure
+      .input(fieldValuesInput)
+      .output(recordFieldListOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    create: publicProcedure
+      .input(fieldCreateInput)
+      .output(serializedFieldOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    update: publicProcedure
+      .input(fieldUpdateArgs)
+      .output(serializedFieldOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    reorder: publicProcedure
+      .input(fieldReorderInput)
+      .output(fieldReorderOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    setValues: publicProcedure
+      .input(setFieldValuesInput)
+      .output(recordFieldListOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    archive: publicProcedure
+      .input(fieldIdInput)
+      .output(serializedFieldOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    restore: publicProcedure
+      .input(fieldIdInput)
+      .output(serializedFieldOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    delete: publicProcedure
+      .input(fieldIdInput)
+      .output(fieldDeleteOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  payments: t.router({
+    list: publicProcedure
+      .input(paymentListInput)
+      .output(paymentListOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    add: publicProcedure
+      .input(addPaymentInput)
+      .output(paymentSummaryOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    record: publicProcedure
+      .input(recordPaymentInput)
+      .output(paymentSummaryOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    void: publicProcedure
+      .input(paymentIdInput)
+      .output(paymentSummaryOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    remove: publicProcedure
+      .input(paymentIdInput)
+      .output(paymentDeleteOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    addPayable: publicProcedure
+      .input(addPayableInput)
+      .output(paymentSummaryOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    recordPayable: publicProcedure
+      .input(recordPaymentInput)
+      .output(paymentSummaryOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    voidPayable: publicProcedure
+      .input(paymentIdInput)
+      .output(paymentSummaryOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    removePayable: publicProcedure
+      .input(paymentIdInput)
+      .output(paymentDeleteOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
   quotes: t.router({
     list: publicProcedure
       .input(quoteListInput)
@@ -199,6 +336,120 @@ const appRouter = t.router({
     bulkPurge: publicProcedure
       .input(quoteBulkInput)
       .output(quoteBulkResultOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  savedViews: t.router({
+    list: publicProcedure
+      .input(savedViewListInput)
+      .output(savedViewListOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    create: publicProcedure
+      .input(savedViewCreateInput)
+      .output(savedViewOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    update: publicProcedure
+      .input(savedViewUpdateArgs)
+      .output(savedViewOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    delete: publicProcedure
+      .input(savedViewIdInput)
+      .output(savedViewDeleteOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  suppliers: t.router({
+    list: publicProcedure
+      .input(supplierListInput)
+      .output(supplierListOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    byId: publicProcedure
+      .input(supplierIdInput)
+      .output(supplierDetailOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    options: publicProcedure
+      .input(supplierOptionsInput)
+      .output(supplierOptionOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    create: publicProcedure
+      .input(supplierCreateInput)
+      .output(supplierSummaryOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    update: publicProcedure
+      .input(supplierUpdateArgs)
+      .output(supplierSummaryOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    archive: publicProcedure
+      .input(supplierIdInput)
+      .output(supplierArchiveResultOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    restore: publicProcedure
+      .input(supplierIdInput)
+      .output(supplierArchiveResultOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    purge: publicProcedure
+      .input(supplierIdInput)
+      .output(supplierArchiveResultOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    bulkArchive: publicProcedure
+      .input(supplierBulkInput)
+      .output(supplierBulkResultOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    bulkRestore: publicProcedure
+      .input(supplierBulkInput)
+      .output(supplierBulkResultOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    bulkPurge: publicProcedure
+      .input(supplierBulkInput)
+      .output(supplierBulkResultOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  travelers: t.router({
+    list: publicProcedure
+      .input(travelerListInput)
+      .output(travelerListOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    byId: publicProcedure
+      .input(travelerIdInput)
+      .output(travelerDetailOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    options: publicProcedure
+      .input(travelerOptionsInput)
+      .output(travelerOptionOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    create: publicProcedure
+      .input(travelerCreateInput)
+      .output(travelerSummaryOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    update: publicProcedure
+      .input(travelerUpdateArgs)
+      .output(travelerSummaryOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    setLoyalty: publicProcedure
+      .input(setLoyaltyInput)
+      .output(travelerDetailOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    archive: publicProcedure
+      .input(travelerIdInput)
+      .output(travelerArchiveResultOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    restore: publicProcedure
+      .input(travelerIdInput)
+      .output(travelerArchiveResultOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    purge: publicProcedure
+      .input(travelerIdInput)
+      .output(travelerArchiveResultOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    bulkArchive: publicProcedure
+      .input(travelerBulkInput)
+      .output(travelerBulkResultOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    bulkRestore: publicProcedure
+      .input(travelerBulkInput)
+      .output(travelerBulkResultOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    bulkPurge: publicProcedure
+      .input(travelerBulkInput)
+      .output(travelerBulkResultOutput)
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   users: t.router({

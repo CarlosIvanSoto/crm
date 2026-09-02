@@ -16,7 +16,7 @@ cada área están en `docs/travel/domain.md`, `docs/travel/money.md` y
 | 0 | Andamiaje del monorepo | HECHO |
 | 1 | `packages/travel-db` (`@travel/db`) | HECHO |
 | 2A | `@travel/validation`, `@travel/auth`, infra de `apps/travel-api`, `AgencyMiddleware`, módulos `agency`/`users`/`customers`/`quotes`/`bookings` | HECHO |
-| 2B | Módulos `travelers`/`suppliers`/`payments`/`activities`/`fields`/`saved-views`, `currency` completo | NO EMPEZADO |
+| 2B | Módulos `travelers`/`suppliers`/`payments`/`activities`/`fields`/`saved-views`, `currency` completo | HECHO |
 | 3 | `apps/travel-app` | NO EMPEZADO |
 | 4 | Comisiones, tareas, PDF, `apps/travel-agent` | FUERA DE ALCANCE INICIAL |
 
@@ -235,30 +235,75 @@ bun run --filter=@travel/validation test
 
 ---
 
-## Fase 2B — NO EMPEZADO — el resto de `apps/travel-api`
+## Fase 2B — HECHO — el resto de `apps/travel-api`
 
-La infraestructura, `@travel/auth`, `@travel/validation` y el `AgencyMiddleware`
-ya existen (Fase 2A). 2B agrega módulos de dominio a la misma app, con la misma
-forma de 4 archivos y las mismas reglas del `agencyDb`.
+Seis módulos de dominio más el módulo `currency` completo, sobre la misma app,
+con la forma de 4 archivos y las reglas del `agencyDb`.
 
-**Módulos que faltan:** `travelers`, `suppliers`, `payments`, `activities`,
-`fields`, `saved-views`. Más el módulo `currency` completo: `RatesService`,
-`RatesController` (cron `TRAVEL_CRON_SECRET`, falla cerrado), `CurrencyService`
-(pantalla de ajustes), y el cron de tasas en `vercel.json`.
+### Archivos
 
-**Trae consigo:**
+```
+packages/travel-db/src/fields.ts        copiado de @crm/db, sin campos de agente
+packages/travel-db/src/fields-shape.ts  entidades CUSTOMER/TRAVELER/QUOTE/BOOKING/SUPPLIER
+packages/travel-db/package.json         exports ./fields y ./fields-shape
+packages/travel-validation/src/saved-view.ts   copiado de packages/validation
+packages/travel-validation/package.json exports ./saved-view
 
-- `ActivityStampService` de `apps/api/src/crm/` → `apps/travel-api/src/travel/`.
-  En 2A `Customer.lastActivityAt` y `Booking.lastActivityAt` quedan nulos.
-- `@travel/db/src/fields.ts` y `fields-shape.ts`, copiados de `@crm/db`.
-- `@travel/validation/saved-view`, copiado de `packages/validation`.
-- Override de `apps/travel-api/src/fields/**` en `.oxlintrc.json`, gemelo del de
-  `apps/api/src/fields/**`.
+apps/travel-api/src/
+  travel/activity-stamp.service.ts       toca Customer.lastActivityAt y Booking.lastActivityAt
+  travel/travel.module.ts                @Global(), provee ActivityStampService
+  currency/currency-config.ts            constantes de tasas y fill
+  currency/conversion.service.ts         + unconverted(), fillMissing(), fillMissingAllAgencies()
+  currency/rates.service.ts              open.er-api.com, una base por moneda de AgencySettings
+  currency/rates.controller.ts           /internal/sync/rates, TRAVEL_CRON_SECRET, falla cerrado
+  currency/currency.service.ts           pantalla de ajustes por agencia, canManageAgency
+  currency/currency.router.ts            alias currency
+  travelers/     suppliers/     payments/     activities/     fields/     saved-views/
+  generated/server.ts                    12 routers, 104 procedimientos
+  test/agency-id-inputs.spec.ts          + 7 módulos nuevos, > 40 esquemas
+  test/payments.spec.ts                  OVERDUE derivado, roles, totales
+  test/fields.spec.ts                    valores por registro, aislamiento entre agencias
+```
 
-**`payments`:** `OVERDUE` no es un estado guardado. Se deriva de
-`status = SCHEDULED AND dueDate < now()`.
+### Decisiones
 
-### Verificación Fase 2B
+- **`currency` per-agencia.** La moneda base sale de `AgencySettings.baseCurrency`,
+  una por agencia. `RatesService` refresca una base por cada moneda distinta en
+  uso. `ExchangeRate` sigue global; un override `MANUAL` de una agencia afecta a
+  las que comparten esa base. `refreshedAt` sale de `max(asOf)` de las filas
+  `FETCHED`; no hay `AppSetting`.
+- **Cambiar la moneda base no re-tasa lo ya convertido.** `money.md` dice que la
+  tasa se congela. `setBaseCurrency` solo corre `fillMissing`: llena las filas sin
+  tasa; las ya convertidas conservan su base.
+- **`fields` sin agente.** El CRM dispara backfill del agente al crear un campo.
+  Viajes no: "la inteligencia nunca vive en la API". Sin `agentFilled`,
+  `agentBrief` ni `AgentModule`.
+- **`activities` sin `emailThread` ni `calendarEvent`.** El modelo de viajes no
+  los tiene. Anclas: `customerId`, `quoteId`, `bookingId`.
+- **`payments`:** `OVERDUE` se deriva en la respuesta de
+  `status = SCHEDULED AND dueDate < now()`. El filtro `status` entiende el valor
+  derivado. `canRecordPayment` (admin o contable) guarda toda mutación.
+
+### Cambios fuera de los módulos nuevos
+
+| Archivo | Cambio |
+| --- | --- |
+| `.oxlintrc.json` | `packages/travel-db/src/fields{,-shape}.ts` y `apps/travel-api/src/fields/**` en el override de campos |
+| `apps/travel-api/src/app.module.ts` | `TravelModule` + 6 módulos + `PaymentsModule` |
+| `apps/travel-api/src/currency/currency.module.ts` | `RatesController`, `CurrencyService`, `CurrencyRouter` |
+
+### Verificado
+
+- `bun run check-types` — 19/19.
+- `bun run lint` — 13/13.
+- `bun run lint:slop` — pasa.
+- `bun run --filter=travel-api test` — 158 casos, contra Postgres 5433.
+- `bun run --filter=@travel/db test` — 11 casos.
+- `bun run --filter=@travel/validation test` — 6 casos.
+- Arranque real: `/health` responde `up`, `/openapi.json` expone 88 rutas, el
+  cron `/internal/sync/rates` está registrado.
+
+### Comandos
 
 ```sh
 bun run travel:test

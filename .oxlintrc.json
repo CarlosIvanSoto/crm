@@ -73,7 +73,10 @@
 				"apps/travel-api/src/logging/**",
 				"packages/db/src/fields.ts",
 				"packages/db/src/fields-shape.ts",
+				"packages/travel-db/src/fields.ts",
+				"packages/travel-db/src/fields-shape.ts",
 				"apps/api/src/fields/**",
+				"apps/travel-api/src/fields/**",
 				"apps/app/components/crm/inline-field.tsx"
 			],
 			"rules": {

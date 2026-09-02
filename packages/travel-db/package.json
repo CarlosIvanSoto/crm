@@ -11,7 +11,9 @@
 		"./json": "./src/json.ts",
 		"./folio": "./src/folio.ts",
 		"./currency": "./src/currency.ts",
-		"./fx": "./src/fx.ts"
+		"./fx": "./src/fx.ts",
+		"./fields": "./src/fields.ts",
+		"./fields-shape": "./src/fields-shape.ts"
 	},
 	"scripts": {
 		"build": "prisma generate",
