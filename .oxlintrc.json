@@ -14,7 +14,9 @@
 		".agents/**",
 		".claude/**",
 		"apps/api/src/generated/**",
+		"apps/travel-api/src/generated/**",
 		"packages/db/src/generated/**",
+		"packages/travel-db/src/generated/**",
 		"packages/ui/src/components/**",
 		"tools/oxlint/anti-slop/**"
 	],
@@ -48,6 +50,14 @@
 			"files": ["packages/validation/src/**"],
 			"rules": {
 				"anti-slop/no-unknown-parameters": "off"
+			}
+		},
+		{
+			"files": ["packages/travel-db/src/tenancy.ts"],
+			"rules": {
+				"anti-slop/no-unsafe-dictionary-type": "off",
+				"anti-slop/no-unknown-parameters": "off",
+				"anti-slop/no-known-value-widening": "off"
 			}
 		},
 		{

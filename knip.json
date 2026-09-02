@@ -24,6 +24,21 @@
 			],
 			"project": ["**/*.{ts,tsx}"]
 		},
+		"apps/travel-api": {
+			"entry": ["api/index.ts", "scripts/*.ts", "test/**/*.spec.ts"],
+			"project": ["src/**/*.ts", "scripts/**/*.ts"]
+		},
+		"apps/travel-app": {
+			"entry": [
+				"app/**/{page,layout,route,error,not-found,loading,template,default}.{ts,tsx}",
+				"test/**/*.spec.{ts,tsx}"
+			],
+			"project": ["**/*.{ts,tsx}"]
+		},
+		"packages/travel-db": {
+			"entry": ["src/*.ts"],
+			"project": ["src/**/*.ts"]
+		},
 		"packages/*": {
 			"entry": ["src/*.ts"],
 			"project": ["src/**/*.{ts,tsx}"]
