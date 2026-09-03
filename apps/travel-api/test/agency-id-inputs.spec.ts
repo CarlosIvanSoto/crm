@@ -5,6 +5,7 @@ import * as agencyContracts from "../src/agency/agency.contracts";
 import * as bookingContracts from "../src/bookings/bookings.contracts";
 import * as currencyContracts from "../src/currency/currency.contracts";
 import * as customerContracts from "../src/customers/customers.contracts";
+import * as dashboardContracts from "../src/dashboard/dashboard.contracts";
 import * as fieldContracts from "../src/fields/fields.contracts";
 import * as paymentContracts from "../src/payments/payments.contracts";
 import * as quoteContracts from "../src/quotes/quotes.contracts";
@@ -55,6 +56,7 @@ const schemas = [
 	...collect("bookings", bookingContracts),
 	...collect("currency", currencyContracts),
 	...collect("customers", customerContracts),
+	...collect("dashboard", dashboardContracts),
 	...collect("fields", fieldContracts),
 	...collect("payments", paymentContracts),
 	...collect("quotes", quoteContracts),
