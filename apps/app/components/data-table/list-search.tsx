@@ -7,8 +7,8 @@ import {
 	InputGroupInput,
 } from "@crm/ui/components/input-group";
 import { useSearchInput } from "@crm/ui/hooks/use-search-input";
+import { searchParsers } from "@crm/ui/lib/list-search-params";
 import { useQueryStates } from "nuqs";
-import { searchParsers } from "./list-search-params";
 
 export function ListSearch({ placeholder }: { placeholder: string }) {
 	const [{ q }, setState] = useQueryStates(searchParsers);

@@ -15,3 +15,11 @@ export type TableQueryState = {
 	setTab: (value: string) => void;
 	setFilter: (id: string, values: string[]) => void;
 };
+
+export type SavedViewFilters = {
+	q: string;
+	sort: string;
+	dir: SortDirection;
+	archived: boolean;
+	filters: Record<string, string[]>;
+};

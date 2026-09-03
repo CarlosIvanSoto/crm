@@ -21,6 +21,7 @@ import {
 import { Field, FieldLabel } from "@crm/ui/components/field";
 import { Input } from "@crm/ui/components/input";
 import { Switch } from "@crm/ui/components/switch";
+import type { TableQuery } from "@crm/ui/hooks/use-table-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -28,7 +29,6 @@ import type { FieldEntity } from "@/components/crm/fields/fields-entity";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
 import type { RouterOutputs } from "@/lib/trpc/types";
-import type { TableQuery } from "./use-table-query";
 
 type SavedView = RouterOutputs["savedViews"]["list"][number];
 
