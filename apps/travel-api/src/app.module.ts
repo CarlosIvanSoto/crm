@@ -9,6 +9,7 @@ import { AppCacheModule } from "./cache/cache.module";
 import { validateEnv } from "./config/env.validation";
 import { CurrencyModule } from "./currency/currency.module";
 import { CustomersModule } from "./customers/customers.module";
+import { DashboardModule } from "./dashboard/dashboard.module";
 import { DatabaseModule } from "./database/database.module";
 import { FieldsModule } from "./fields/fields.module";
 import { HealthModule } from "./health/health.module";
@@ -38,6 +39,7 @@ import { UsersModule } from "./users/users.module";
 		HealthModule,
 		TrpcModule,
 		CurrencyModule,
+		DashboardModule,
 		AgencyModule,
 		UsersModule,
 		CustomersModule,

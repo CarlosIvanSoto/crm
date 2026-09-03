@@ -18,6 +18,7 @@ import { agencyProfileOutput, updateAgencyProfileInput, agencyMemberListOutput, 
 import { bookingListInput, bookingListOutput, bookingIdInput, bookingDetailOutput, bookingCreateInput, bookingSummaryOutput, bookingUpdateArgs, setBookingItemsInput, setBookingTravelersInput, bookingArchiveResultOutput, bookingBulkInput, bookingBulkResultOutput } from "../bookings/bookings.contracts";
 import { currencySettingsOutput, setBaseCurrencyInput, setManualRateInput, removeManualRateInput } from "../currency/currency.contracts";
 import { customerListInput, customerListOutput, customerIdInput, customerDetailOutput, customerOptionsInput, customerOptionOutput, customerCreateInput, customerSummaryOutput, customerUpdateArgs, customerArchiveResultOutput, customerBulkOwnerInput, customerBulkResultOutput, customerBulkInput } from "../customers/customers.contracts";
+import { dashboardSummaryInput, dashboardSummaryOutput } from "../dashboard/dashboard.contracts";
 import { fieldListInput, fieldListOutput, fieldByKeyInput, serializedFieldOutput, fieldEntityInput, fieldFiltersOutput, fieldIdInput, fieldCoverageOutput, fieldValuesInput, recordFieldListOutput, fieldCreateInput, fieldUpdateArgs, fieldReorderInput, fieldReorderOutput, setFieldValuesInput, fieldDeleteOutput } from "../fields/fields.contracts";
 import { paymentListInput, paymentListOutput, addPaymentInput, paymentSummaryOutput, recordPaymentInput, paymentIdInput, paymentDeleteOutput, addPayableInput } from "../payments/payments.contracts";
 import { quoteListInput, quoteListOutput, quoteIdInput, quoteDetailOutput, quoteCreateInput, quoteSummaryOutput, quoteUpdateArgs, setQuoteOptionsInput, acceptQuoteInput, acceptQuoteOutput, quoteArchiveResultOutput, quoteBulkInput, quoteBulkResultOutput } from "../quotes/quotes.contracts";
@@ -199,6 +200,12 @@ const appRouter = t.router({
       .input(customerBulkInput)
       .output(customerBulkResultOutput)
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  dashboard: t.router({
+    summary: publicProcedure
+      .input(dashboardSummaryInput)
+      .output(dashboardSummaryOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   fields: t.router({
     list: publicProcedure

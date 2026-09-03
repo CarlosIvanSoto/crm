@@ -1,7 +1,5 @@
 "use client";
 
-import type { SortDirection, TableQueryState } from "@crm/ui/lib/table-query";
-import type { SavedViewFilters } from "@crm/validation/saved-view";
 import type { Nullable, Values } from "nuqs";
 import { useQueryStates } from "nuqs";
 import { z } from "zod";
@@ -10,7 +8,12 @@ import type {
 	ListInput,
 	ListSearchParams,
 	ListSearchValues,
-} from "./list-search-params";
+} from "../lib/list-search-params";
+import type {
+	SavedViewFilters,
+	SortDirection,
+	TableQueryState,
+} from "../lib/table-query";
 
 export type TableQuery<TTab extends string, TFacet extends string = never> = {
 	query: TableQueryState;

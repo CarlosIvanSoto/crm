@@ -1,9 +1,9 @@
 # Travel API and app — read before you touch `apps/travel-api` or `apps/travel-app`
 
-Status: **not built yet.** Fase 0 (monorepo scaffolding) and Fase 1
-(`packages/travel-db`) are done. Fase 2 (`apps/travel-api`) and Fase 3
-(`apps/travel-app`) are in the approved plan file and not started. This doc is
-the contract they must follow.
+Status: **built.** Fases 0–3C are done. `apps/travel-api` has 13 routers and 105
+procedures. `apps/travel-app` has the shell, the six entities, the dashboard and
+the five settings screens. `docs/travel/status.md` tracks what is left. This doc
+is the contract the code follows.
 
 ## The API is the CRM's API, minus the intelligence, plus one middleware
 
@@ -47,3 +47,42 @@ log headers, query strings or bodies.
 `AUTH_COOKIE_PREFIX = "travel"` — set in both `advanced.cookiePrefix` in
 `auth.ts` and `getSessionCookie(request, { cookiePrefix })` in the app's
 `proxy.ts`. One alone redirects every signed-in request.
+
+## The app — `apps/travel-app`
+
+- **Port 3010.** Talks to `apps/travel-api` on 3011 through
+  `app/api/[...path]/route.ts`, which proxies `/api/trpc` and `/api/auth` to
+  `TRAVEL_API_URL`.
+- **The URL slug is the agency, and it is tenancy.** `proxy.ts` redirects a
+  foreign slug to the caller's own. `app/(app)/[agency]/layout.tsx` repeats the
+  check with `notFound()` because the proxy is not an authorization.
+- **`agency.profile` is the `workspace.get` of travel.** It returns `slug`,
+  `viewerRole` and `canManage`. The layout and every settings screen read
+  `canManage` from it — one source, so the button and the 403 never disagree.
+- **A client component never imports a server package.** `@travel/auth` (the
+  barrel), `@travel/db` and `travel-api` service code reach Prisma. A
+  `"use client"` file may import `@travel/auth/client`, `@travel/auth/cookies`,
+  `@travel/auth/agency`, `@travel/db/fields-shape` (a leaf module, no Prisma),
+  `@crm/ui`, the tRPC client and React. Nothing else without checking.
+- **Money is `number` in major units.** Use `formatAmount` / `formatAmountCompact`
+  from `@crm/ui/lib/format`, never `formatMoney` (it divides by 100). Only the
+  `*BaseAmount` columns are summed. A missing rate is shown next to the total,
+  never treated as zero.
+- **`lib/trpc/cache.ts`** is the invalidation facade. A new mutation adds a call
+  there, not a list of query keys at the call site.
+
+### Routes
+
+```
+app/(landing)/   sign-in, sign-up, new-agency, accept/[invitationId]
+app/(app)/[agency]/
+  page.tsx                 dashboard — dashboard.summary({ scope })
+  customers/ travelers/ suppliers/ quotes/ bookings/   list + record sheet
+  payments/                charges and payables on one screen
+  settings/
+    (General)              agency.profile / updateProfile — tax data, timezone, logo
+    members/               members, setRole, removeMember, invitations, invite
+    currencies/            currency.settings + setBaseCurrency / rate mutations
+    fields/                fields.* for the five entities, entity in ?entity
+    folios/                updateProfile with quotePrefix / bookingPrefix
+```
