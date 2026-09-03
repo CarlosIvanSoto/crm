@@ -80,7 +80,7 @@ export const auth = betterAuth({
 					email: data.email,
 					agencyName: data.organization.name,
 					inviterName: data.inviter.user.name,
-					acceptUrl: new URL(`/aceptar/${data.id}`, env.appUrl).toString(),
+					acceptUrl: new URL(`/accept/${data.id}`, env.appUrl).toString(),
 				});
 			},
 		}),

@@ -1,6 +1,34 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID, scrypt } from "node:crypto";
 import { db } from "../src/client";
 import { COUNTER_KIND, formatFolio } from "../src/folio";
+
+const SEED_PASSWORD = "password123";
+
+const SCRYPT_PARAMS = { N: 16384, r: 16, p: 1, keylen: 64 } as const;
+
+function hashPassword(password: string): Promise<string> {
+	const salt = randomBytes(16).toString("hex");
+	return new Promise((resolve, reject) => {
+		scrypt(
+			password.normalize("NFKC"),
+			salt,
+			SCRYPT_PARAMS.keylen,
+			{
+				N: SCRYPT_PARAMS.N,
+				r: SCRYPT_PARAMS.r,
+				p: SCRYPT_PARAMS.p,
+				maxmem: 128 * SCRYPT_PARAMS.N * SCRYPT_PARAMS.r * 2,
+			},
+			(error, derivedKey) => {
+				if (error) {
+					reject(error);
+					return;
+				}
+				resolve(`${salt}:${derivedKey.toString("hex")}`);
+			},
+		);
+	});
+}
 
 function makeRandom(seed: number): () => number {
 	let state = seed >>> 0;
@@ -72,6 +100,16 @@ async function seedAgency(
 			userId: ownerId,
 			role: "owner",
 			createdAt: new Date(),
+		},
+	});
+
+	await db.account.create({
+		data: {
+			id: randomUUID(),
+			accountId: ownerId,
+			providerId: "credential",
+			userId: ownerId,
+			password: await hashPassword(SEED_PASSWORD),
 		},
 	});
 

@@ -1,0 +1,44 @@
+{
+	"$schema": "https://turborepo.dev/schema.json",
+	"extends": ["//"],
+	"tasks": {
+		"build": {
+			"dependsOn": ["^build"],
+			"inputs": ["$TURBO_DEFAULT$", ".env*"],
+			"outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"],
+			"env": ["NEXT_PUBLIC_TRAVEL_API_URL"],
+			"passThroughEnv": [
+				"TRAVEL_API_URL",
+				"TRAVEL_APP_URL",
+				"TRAVEL_BETTER_AUTH_SECRET",
+				"TRAVEL_AUTH_COOKIE_DOMAIN",
+				"TRAVEL_DATABASE_URL",
+				"TRAVEL_GOOGLE_CLIENT_ID",
+				"TRAVEL_GOOGLE_CLIENT_SECRET"
+			]
+		},
+		"check-types": {
+			"dependsOn": ["$TURBO_EXTENDS$", "typegen"]
+		},
+		"typegen": {
+			"inputs": ["app/**", "next.config.ts"],
+			"outputs": [".next/types/**", "next-env.d.ts"],
+			"passThroughEnv": ["TRAVEL_API_URL", "NEXT_PUBLIC_TRAVEL_API_URL"]
+		},
+		"dev": {
+			"dependsOn": ["$TURBO_EXTENDS$"],
+			"cache": false,
+			"persistent": true,
+			"passThroughEnv": [
+				"TRAVEL_API_URL",
+				"TRAVEL_APP_URL",
+				"TRAVEL_BETTER_AUTH_SECRET",
+				"TRAVEL_AUTH_COOKIE_DOMAIN",
+				"TRAVEL_DATABASE_URL",
+				"TRAVEL_GOOGLE_CLIENT_ID",
+				"TRAVEL_GOOGLE_CLIENT_SECRET",
+				"NEXT_PUBLIC_TRAVEL_API_URL"
+			]
+		}
+	}
+}
