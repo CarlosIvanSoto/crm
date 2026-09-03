@@ -56,6 +56,28 @@ export function formatMoneyCompact(cents: number, currency = "usd"): string {
 	}).format(cents / 100);
 }
 
+export function formatAmount(value: number, currency = "usd"): string {
+	const code = displayCurrencyCode(currency);
+	const whole = Number.isInteger(value);
+	const digits = fractionDigits(code);
+
+	return new Intl.NumberFormat(undefined, {
+		style: "currency",
+		currency: code,
+		minimumFractionDigits: whole ? 0 : Math.min(2, digits),
+		maximumFractionDigits: whole ? 0 : digits,
+	}).format(value);
+}
+
+export function formatAmountCompact(value: number, currency = "usd"): string {
+	return new Intl.NumberFormat(undefined, {
+		style: "currency",
+		currency: displayCurrencyCode(currency),
+		notation: "compact",
+		maximumFractionDigits: value % 1000 === 0 ? 0 : 1,
+	}).format(value);
+}
+
 export function formatPercent(rate: number): string {
 	return percentFormat.format(rate);
 }
