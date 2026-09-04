@@ -42,6 +42,10 @@ export const dashboardSummaryOutput = z.object({
 		count: z.number(),
 		items: z.array(departureOutput),
 	}),
+	tasks: z.object({
+		open: z.number(),
+		overdue: z.number(),
+	}),
 	unconverted: z.object({
 		count: z.number(),
 		currencies: z.array(z.string()),

@@ -49,39 +49,56 @@ export class DashboardService {
 		};
 		if (mine) overdueWhere.booking = { ownerId: userId };
 
-		const [monthAgg, overdueRows, departureRows, unconverted, baseCurrency] =
-			await Promise.all([
-				scoped.booking.aggregate({
-					where: {
-						...liveBooking,
-						createdAt: { gte: startOfMonth, lt: startOfNextMonth },
-					},
-					_sum: { sellTotalBase: true, costTotalBase: true },
-					_count: { _all: true },
-				}),
-				scoped.payment.findMany({
-					where: overdueWhere,
-					select: { baseAmount: true },
-				}),
-				scoped.booking.findMany({
-					where: {
-						...liveBooking,
-						travelStartDate: { gte: now, lt: departureEnd },
-					},
-					orderBy: { travelStartDate: "asc" },
-					select: {
-						id: true,
-						folio: true,
-						destination: true,
-						travelStartDate: true,
-						status: true,
-						customer: { select: { name: true } },
-						_count: { select: { travelers: true } },
-					},
-				}),
-				this.conversion.unconverted(agencyId),
-				this.conversion.baseCurrencyFor(agencyId),
-			]);
+		const openTaskWhere: Prisma.ActivityWhereInput = {
+			type: "TASK",
+			completedAt: null,
+		};
+		if (mine) openTaskWhere.assignedToId = userId;
+
+		const [
+			monthAgg,
+			overdueRows,
+			departureRows,
+			openTasks,
+			overdueTasks,
+			unconverted,
+			baseCurrency,
+		] = await Promise.all([
+			scoped.booking.aggregate({
+				where: {
+					...liveBooking,
+					createdAt: { gte: startOfMonth, lt: startOfNextMonth },
+				},
+				_sum: { sellTotalBase: true, costTotalBase: true },
+				_count: { _all: true },
+			}),
+			scoped.payment.findMany({
+				where: overdueWhere,
+				select: { baseAmount: true },
+			}),
+			scoped.booking.findMany({
+				where: {
+					...liveBooking,
+					travelStartDate: { gte: now, lt: departureEnd },
+				},
+				orderBy: { travelStartDate: "asc" },
+				select: {
+					id: true,
+					folio: true,
+					destination: true,
+					travelStartDate: true,
+					status: true,
+					customer: { select: { name: true } },
+					_count: { select: { travelers: true } },
+				},
+			}),
+			scoped.activity.count({ where: openTaskWhere }),
+			scoped.activity.count({
+				where: { ...openTaskWhere, dueAt: { lt: now } },
+			}),
+			this.conversion.unconverted(agencyId),
+			this.conversion.baseCurrencyFor(agencyId),
+		]);
 
 		const soldBase = monthAgg._sum.sellTotalBase?.toNumber() ?? 0;
 		const costBase = monthAgg._sum.costTotalBase?.toNumber() ?? 0;
@@ -122,6 +139,10 @@ export class DashboardService {
 					travelers: row._count.travelers,
 					status: row.status,
 				})),
+			},
+			tasks: {
+				open: openTasks,
+				overdue: overdueTasks,
 			},
 			unconverted,
 		};

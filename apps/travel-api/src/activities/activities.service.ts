@@ -1,23 +1,41 @@
 import {
 	BadRequestException,
+	ForbiddenException,
 	Injectable,
 	Logger,
 	NotFoundException,
 } from "@nestjs/common";
+import { type AgencyRole, canSeeMargins } from "@travel/auth";
 import { ActivityType, agencyDb, type Db, type Prisma } from "@travel/db";
 import { InjectDatabase } from "../database/database.constants";
 import { ActivityStampService } from "../travel/activity-stamp.service";
+import { type BulkResult, requireAgencyMember, runBulk } from "../travel/bulk";
 import { blankToNull } from "../travel/values";
+import {
+	countsByKey,
+	type FacetCount,
+	type OrderByColumns,
+	paginate,
+	resolveOrderBy,
+} from "../trpc/list-input";
 import type {
 	ActivityCreateInput,
 	ActivityEntry,
-	MyTasksInput,
+	AssignInput,
+	TaskListInput,
+	TaskListResult,
+	TaskWindow,
 	TimelineCounts,
 	TimelineCountsInput,
 	TimelineFilter,
 	TimelineInput,
 	TimelineResult,
+	UpdateTaskInput,
 } from "./activities.contracts";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const TASK_WINDOWS = ["overdue", "today", "week", "all"] as const;
 
 const AUTHOR_SELECT = {
 	id: true,
@@ -39,6 +57,9 @@ const ENTRY_SELECT = {
 	bookingId: true,
 	createdAt: true,
 	createdBy: { select: AUTHOR_SELECT },
+	assignedTo: { select: AUTHOR_SELECT },
+	reminderSentAt: true,
+	sourceKey: true,
 } as const;
 
 const NOTE_TYPES = [
@@ -46,6 +67,20 @@ const NOTE_TYPES = [
 	ActivityType.CALL,
 	ActivityType.EMAIL,
 	ActivityType.MEETING,
+];
+
+const TASK_SORTABLE: OrderByColumns<Prisma.ActivityOrderByWithRelationInput[]> =
+	{
+		dueAt: (dir) => [
+			{ dueAt: { sort: dir, nulls: "last" } },
+			{ createdAt: "desc" },
+		],
+		createdAt: (dir) => [{ createdAt: dir }],
+	};
+
+const TASK_ORDER_FALLBACK: Prisma.ActivityOrderByWithRelationInput[] = [
+	{ dueAt: { sort: "asc", nulls: "last" } },
+	{ createdAt: "desc" },
 ];
 
 @Injectable()
@@ -121,6 +156,14 @@ export class ActivitiesService {
 
 		const isTask = input.type === ActivityType.TASK;
 
+		let assignedToId: string | null = null;
+		if (isTask) {
+			assignedToId = input.assignedToId ?? actingUserId;
+			if (input.assignedToId) {
+				await requireAgencyMember(this.db, agencyId, input.assignedToId);
+			}
+		}
+
 		const activity = await scoped.activity.create({
 			data: {
 				agencyId,
@@ -133,6 +176,7 @@ export class ActivitiesService {
 				quoteId: input.quoteId ?? null,
 				bookingId: input.bookingId ?? null,
 				createdById: actingUserId,
+				assignedToId,
 			},
 			select: ENTRY_SELECT,
 		});
@@ -156,22 +200,14 @@ export class ActivitiesService {
 
 	async complete(
 		agencyId: string,
+		role: AgencyRole,
+		viewerId: string,
 		id: string,
 		completed: boolean,
 	): Promise<ActivityEntry> {
 		const scoped = agencyDb(this.db, agencyId);
-		const activity = await scoped.activity.findFirst({
-			where: { id },
-			select: { type: true },
-		});
-
-		if (!activity) {
-			throw new NotFoundException(`No activity with id ${id}.`);
-		}
-
-		if (activity.type !== ActivityType.TASK) {
-			throw new BadRequestException("Only tasks can be completed.");
-		}
+		const task = await this.readTask(scoped, id);
+		this.requireManagerOrAssignee(role, viewerId, task.assignedToId);
 
 		const updated = await scoped.activity.update({
 			where: { id },
@@ -182,33 +218,178 @@ export class ActivitiesService {
 		return serializeEntry(updated);
 	}
 
-	async myTasks(
+	async completeMany(
 		agencyId: string,
-		input: MyTasksInput,
-		actingUserId: string,
-	): Promise<ActivityEntry[]> {
+		role: AgencyRole,
+		viewerId: string,
+		ids: string[],
+	): Promise<BulkResult> {
+		return runBulk(ids, (id) =>
+			this.complete(agencyId, role, viewerId, id, true),
+		);
+	}
+
+	async tasks(
+		agencyId: string,
+		role: AgencyRole,
+		viewerId: string,
+		input: TaskListInput,
+	): Promise<TaskListResult> {
 		const scoped = agencyDb(this.db, agencyId);
-		const now = new Date();
-		const where: Prisma.ActivityWhereInput = {
+
+		const viewerScope = canSeeMargins(role) ? null : viewerId;
+		const assignedToId = viewerScope ?? input.assignedToId;
+
+		const base: Prisma.ActivityWhereInput = {
 			type: ActivityType.TASK,
 			completedAt: null,
-			createdById: actingUserId,
+		};
+		if (assignedToId) base.assignedToId = assignedToId;
+		if (input.bookingId) base.bookingId = input.bookingId;
+
+		const where: Prisma.ActivityWhereInput = {
+			...base,
+			...windowClause(input.window),
 		};
 
-		if (input.window === "overdue") where.dueAt = { lt: now };
-		if (input.window === "upcoming") where.dueAt = { gte: now };
+		const { skip, take } = paginate(input);
 
-		const tasks = await scoped.activity.findMany({
-			where,
-			take: input.limit,
-			orderBy: [
-				{ dueAt: { sort: "asc", nulls: "last" } },
-				{ createdAt: "desc" },
-			],
+		const [rows, total, windowCounts, assigneeGroups] = await Promise.all([
+			scoped.activity.findMany({
+				where,
+				skip,
+				take,
+				orderBy: resolveOrderBy(input, TASK_SORTABLE, TASK_ORDER_FALLBACK),
+				select: ENTRY_SELECT,
+			}),
+			scoped.activity.count({ where }),
+			Promise.all(
+				TASK_WINDOWS.map((option) =>
+					scoped.activity.count({
+						where: { ...base, ...windowClause(option) },
+					}),
+				),
+			),
+			scoped.activity.groupBy({
+				by: ["assignedToId"],
+				where: base,
+				_count: { _all: true },
+			}),
+		]);
+
+		const windowFacet: FacetCount = {};
+		TASK_WINDOWS.forEach((option, index) => {
+			windowFacet[option] = windowCounts[index] ?? 0;
+		});
+
+		return {
+			rows: rows.map(serializeEntry),
+			total,
+			facetCounts: {
+				window: windowFacet,
+				assignedTo: countsByKey(assigneeGroups, "assignedToId"),
+			},
+		};
+	}
+
+	async assign(
+		agencyId: string,
+		role: AgencyRole,
+		viewerId: string,
+		input: AssignInput,
+	): Promise<ActivityEntry> {
+		const scoped = agencyDb(this.db, agencyId);
+		const task = await this.readTask(scoped, input.id);
+		this.requireManagerOrAssignee(role, viewerId, task.assignedToId);
+
+		if (input.assignedToId) {
+			await requireAgencyMember(this.db, agencyId, input.assignedToId);
+		}
+
+		const updated = await scoped.activity.update({
+			where: { id: input.id },
+			data: { assignedToId: input.assignedToId },
 			select: ENTRY_SELECT,
 		});
 
-		return tasks.map(serializeEntry);
+		return serializeEntry(updated);
+	}
+
+	async updateTask(
+		agencyId: string,
+		role: AgencyRole,
+		viewerId: string,
+		input: UpdateTaskInput,
+	): Promise<ActivityEntry> {
+		const scoped = agencyDb(this.db, agencyId);
+		const task = await this.readTask(scoped, input.id);
+		this.requireManagerOrAssignee(role, viewerId, task.assignedToId);
+
+		const data: Prisma.ActivityUpdateInput = {};
+		if (input.subject !== undefined) {
+			data.subject = blankToNull(input.subject);
+		}
+		if (input.body !== undefined) {
+			data.body = input.body === null ? null : blankToNull(input.body);
+		}
+		if (input.dueAt !== undefined) {
+			data.dueAt = parseDate(input.dueAt);
+		}
+
+		const updated = await scoped.activity.update({
+			where: { id: input.id },
+			data,
+			select: ENTRY_SELECT,
+		});
+
+		return serializeEntry(updated);
+	}
+
+	async remove(
+		agencyId: string,
+		role: AgencyRole,
+		viewerId: string,
+		id: string,
+	): Promise<{ id: string }> {
+		const scoped = agencyDb(this.db, agencyId);
+		const task = await this.readTask(scoped, id);
+		this.requireManagerOrAssignee(role, viewerId, task.assignedToId);
+
+		await scoped.activity.delete({ where: { id } });
+
+		return { id };
+	}
+
+	private async readTask(
+		scoped: ReturnType<typeof agencyDb>,
+		id: string,
+	): Promise<{ type: ActivityType; assignedToId: string | null }> {
+		const task = await scoped.activity.findFirst({
+			where: { id },
+			select: { type: true, assignedToId: true },
+		});
+
+		if (!task) {
+			throw new NotFoundException(`No activity with id ${id}.`);
+		}
+
+		if (task.type !== ActivityType.TASK) {
+			throw new BadRequestException("Only tasks can be changed here.");
+		}
+
+		return task;
+	}
+
+	private requireManagerOrAssignee(
+		role: AgencyRole,
+		viewerId: string,
+		assignedToId: string | null,
+	): void {
+		if (canSeeMargins(role)) return;
+		if (assignedToId === viewerId) return;
+		throw new ForbiddenException(
+			"Only the assignee or a manager can change this task.",
+		);
 	}
 
 	private anchor(input: TimelineCountsInput): Prisma.ActivityWhereInput {
@@ -292,6 +473,23 @@ function filterClause(filter: TimelineFilter): Prisma.ActivityWhereInput {
 	}
 }
 
+function windowClause(window: TaskWindow): Prisma.ActivityWhereInput {
+	if (window === "all") return {};
+
+	const now = new Date();
+	const startOfToday = new Date(
+		now.getFullYear(),
+		now.getMonth(),
+		now.getDate(),
+	);
+
+	if (window === "overdue") return { dueAt: { lt: startOfToday } };
+	if (window === "today") {
+		return { dueAt: { lt: new Date(startOfToday.getTime() + DAY_MS) } };
+	}
+	return { dueAt: { lt: new Date(startOfToday.getTime() + 7 * DAY_MS) } };
+}
+
 type Entry = Prisma.ActivityGetPayload<{ select: typeof ENTRY_SELECT }>;
 
 function serializeEntry(entry: Entry): ActivityEntry {
@@ -308,6 +506,9 @@ function serializeEntry(entry: Entry): ActivityEntry {
 		bookingId: entry.bookingId,
 		createdAt: entry.createdAt.toISOString(),
 		createdBy: entry.createdBy,
+		assignedTo: entry.assignedTo,
+		reminderSentAt: entry.reminderSentAt?.toISOString() ?? null,
+		sourceKey: entry.sourceKey,
 	};
 }
 

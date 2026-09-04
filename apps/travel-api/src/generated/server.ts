@@ -13,7 +13,7 @@ import { z } from "zod";
 
 const t = initTRPC.create();
 const publicProcedure = t.procedure;
-import { timelineInput, timelineOutput, timelineCountsInput, timelineCountsOutput, myTasksInput, myTasksOutput, activityCreateInput, activityCreateOutput, completeInput, completeOutput } from "../activities/activities.contracts";
+import { timelineInput, timelineOutput, timelineCountsInput, timelineCountsOutput, taskListInput, taskListOutput, activityCreateInput, activityCreateOutput, completeInput, completeOutput, completeManyInput, bulkResultOutput, assignInput, updateTaskInput, removeInput, removeOutput } from "../activities/activities.contracts";
 import { agencyProfileOutput, updateAgencyProfileInput, agencyMemberListOutput, invitationListOutput, inviteMemberInput, inviteMemberOutput, invitationIdInput, setMemberRoleInput, agencyMemberOutput, memberIdInput } from "../agency/agency.contracts";
 import { bookingListInput, bookingListOutput, bookingIdInput, bookingDetailOutput, bookingCreateInput, bookingSummaryOutput, bookingUpdateArgs, setBookingItemsInput, setBookingTravelersInput, bookingArchiveResultOutput, bookingBulkInput, bookingBulkResultOutput } from "../bookings/bookings.contracts";
 import { commissionListInput, commissionListOutput, commissionByBookingInput, commissionByBookingOutput, advisorReportOutput, supplierReportOutput, createCommissionInput, commissionSummaryOutput, updateCommissionInput, commissionRowOutput, commissionIdInput, commissionDeleteOutput, commissionBulkInput, commissionBulkResultOutput } from "../commissions/commissions.contracts";
@@ -38,9 +38,9 @@ const appRouter = t.router({
       .input(timelineCountsInput)
       .output(timelineCountsOutput)
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
-    myTasks: publicProcedure
-      .input(myTasksInput)
-      .output(myTasksOutput)
+    tasks: publicProcedure
+      .input(taskListInput)
+      .output(taskListOutput)
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
     create: publicProcedure
       .input(activityCreateInput)
@@ -49,6 +49,22 @@ const appRouter = t.router({
     complete: publicProcedure
       .input(completeInput)
       .output(completeOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    completeMany: publicProcedure
+      .input(completeManyInput)
+      .output(bulkResultOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    assign: publicProcedure
+      .input(assignInput)
+      .output(activityCreateOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    updateTask: publicProcedure
+      .input(updateTaskInput)
+      .output(activityCreateOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    remove: publicProcedure
+      .input(removeInput)
+      .output(removeOutput)
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   agency: t.router({

@@ -1,5 +1,7 @@
 import { ActivityType } from "@travel/db/enums";
 import { z } from "zod";
+import { bulkIdsInput } from "../travel/bulk";
+import { listInput } from "../trpc/list-input";
 
 const COMPOSABLE_TYPES = [
 	ActivityType.NOTE,
@@ -27,6 +29,10 @@ const TIMELINE_FILTERS = [
 
 export type TimelineFilter = (typeof TIMELINE_FILTERS)[number];
 
+const TASK_WINDOWS = ["overdue", "today", "week", "all"] as const;
+
+export type TaskWindow = (typeof TASK_WINDOWS)[number];
+
 const anchorInput = {
 	customerId: z.string().optional(),
 	quoteId: z.string().optional(),
@@ -53,6 +59,7 @@ export const activityCreateInput = z
 		body: z.string().trim().max(10000).optional(),
 		occurredAt: z.string().datetime().optional(),
 		dueAt: z.string().datetime().nullable().optional(),
+		assignedToId: z.string().nullable().default(null),
 		...anchorInput,
 	})
 	.refine((input) => input.customerId || input.quoteId || input.bookingId, {
@@ -73,12 +80,33 @@ export const completeInput = z.object({
 	completed: z.boolean().default(true),
 });
 
-export const myTasksInput = z.object({
-	window: z.enum(["overdue", "upcoming", "all"]).default("all"),
-	limit: z.number().int().min(1).max(100).default(25),
+export const completeManyInput = bulkIdsInput;
+
+export const taskListInput = listInput.extend({
+	window: z.enum(TASK_WINDOWS).default("all"),
+	assignedToId: z.string().nullable().default(null),
+	bookingId: z.string().nullable().default(null),
 });
 
-export type MyTasksInput = z.infer<typeof myTasksInput>;
+export type TaskListInput = z.infer<typeof taskListInput>;
+
+export const assignInput = z.object({
+	id: z.string(),
+	assignedToId: z.string().nullable(),
+});
+
+export type AssignInput = z.infer<typeof assignInput>;
+
+export const updateTaskInput = z.object({
+	id: z.string(),
+	subject: z.string().trim().max(200).optional(),
+	body: z.string().trim().max(10000).nullable().optional(),
+	dueAt: z.string().datetime().nullable().optional(),
+});
+
+export type UpdateTaskInput = z.infer<typeof updateTaskInput>;
+
+export const removeInput = z.object({ id: z.string() });
 
 const activityAuthorOutput = z.object({
 	id: z.string(),
@@ -100,6 +128,9 @@ export const activityEntryOutput = z.object({
 	bookingId: z.string().nullable(),
 	createdAt: z.string(),
 	createdBy: activityAuthorOutput,
+	assignedTo: activityAuthorOutput.nullable(),
+	reminderSentAt: z.string().nullable(),
+	sourceKey: z.string().nullable(),
 });
 
 export type ActivityEntry = z.infer<typeof activityEntryOutput>;
@@ -122,8 +153,29 @@ export const timelineCountsOutput = z.object({
 
 export type TimelineCounts = z.infer<typeof timelineCountsOutput>;
 
-export const myTasksOutput = z.array(activityEntryOutput);
+const facetCountsOutput = z.record(
+	z.string(),
+	z.record(z.string(), z.number()),
+);
+
+export const taskListOutput = z.object({
+	rows: z.array(activityEntryOutput),
+	total: z.number(),
+	facetCounts: facetCountsOutput,
+});
+
+export type TaskListResult = z.infer<typeof taskListOutput>;
 
 export const activityCreateOutput = activityEntryOutput;
 
 export const completeOutput = activityEntryOutput;
+
+export const bulkResultOutput = z.object({
+	requested: z.number(),
+	succeeded: z.number(),
+	skipped: z.number(),
+	failed: z.number(),
+	message: z.string().nullable(),
+});
+
+export const removeOutput = z.object({ id: z.string() });
