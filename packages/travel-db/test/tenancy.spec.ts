@@ -21,10 +21,12 @@ let ownerId: string;
 let bookingA: string;
 let bookingB: string;
 let customerA: string;
+let commissionB: string;
 
 async function seedAgency(id: string): Promise<{
 	bookingId: string;
 	customerId: string;
+	commissionId: string;
 }> {
 	await db.organization.create({
 		data: { id, name: id, slug: id, createdAt: new Date() },
@@ -43,7 +45,22 @@ async function seedAgency(id: string): Promise<{
 		},
 	});
 
-	return { bookingId: booking.id, customerId: customer.id };
+	const commission = await db.commission.create({
+		data: {
+			agencyId: id,
+			bookingId: booking.id,
+			userId: ownerId,
+			createdById: ownerId,
+			basis: "MARGIN",
+			rate: "0.1000",
+		},
+	});
+
+	return {
+		bookingId: booking.id,
+		customerId: customer.id,
+		commissionId: commission.id,
+	};
 }
 
 beforeAll(async () => {
@@ -65,6 +82,7 @@ beforeAll(async () => {
 	bookingA = seededA.bookingId;
 	bookingB = seededB.bookingId;
 	customerA = seededA.customerId;
+	commissionB = seededB.commissionId;
 });
 
 afterAll(async () => {
@@ -74,6 +92,7 @@ afterAll(async () => {
 
 async function cleanup(): Promise<void> {
 	for (const id of [agencyA, agencyB]) {
+		await db.commission.deleteMany({ where: { agencyId: id } });
 		await db.booking.deleteMany({ where: { agencyId: id } });
 		await db.customer.deleteMany({ where: { agencyId: id } });
 		await db.organization.deleteMany({ where: { id } });
@@ -199,6 +218,28 @@ describe("agencyDb", () => {
 			select: { id: true },
 		});
 		expect(rows.map((row) => row.id).sort()).toEqual([agencyA, agencyB].sort());
+	});
+
+	it("scopes commission the same way", async () => {
+		const unreachable = await agencyDb(db, agencyA).commission.findFirst({
+			where: { id: commissionB },
+		});
+		expect(unreachable).toBeNull();
+
+		const created = await agencyDb(db, agencyA).commission.create({
+			data: {
+				agencyId: agencyB,
+				bookingId: bookingA,
+				userId: ownerId,
+				createdById: ownerId,
+				basis: "FIXED",
+				amount: "50.00",
+				currency: "USD",
+			},
+		});
+		expect(created.agencyId).toBe(agencyA);
+
+		await db.commission.delete({ where: { id: created.id } });
 	});
 
 	it("does not scope a nested create, so it fails closed", async () => {
