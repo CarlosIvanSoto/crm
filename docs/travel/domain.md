@@ -26,10 +26,23 @@ doc is the set of rules that are not optional.
   - **throws on `findUnique` / `findUniqueOrThrow`.** Prisma rejects a
     non-unique filter there, so those calls would escape the tenant scope
     silently. Read with `findFirst({ where: { id, agencyId } })`.
+  - **does not propagate into `$transaction`.** The callback of
+    `this.db.$transaction(async (tx) => { ... })` receives the raw, unscoped
+    client — `tx` is never `agencyDb`'s extension. Every write inside carries
+    `agencyId` by hand, in both `data` and `where`. `quotes.service.ts`'s
+    `accept` and `quote-share.service.ts`'s `accept` are the pattern.
 - **`TENANT_MODELS` (`@travel/db/tenancy`) is the list.** A new business model is
   added there or it is not scoped.
 - `ExchangeRate` is the one deliberate exception — market rates are global, so
   it is not in `TENANT_MODELS`.
+- **An anonymous caller resolving a public token is the one deliberate reason
+  to query the raw client by hand outside `$transaction`.** A share link
+  (`QuoteShare.tokenHash`) has no `agencyId` to scope by — the caller has no
+  session and no agency. `quote-share.service.ts`'s private `resolve(token)` is
+  the only place this happens: it reads `agencyId` off the resolved row, then
+  every further read for that request goes through
+  `agencyDb(this.db, share.agencyId)` like anywhere else. `agencyId` still never
+  comes from the input — it comes from a row the token alone unlocked.
 
 ## Folios
 
@@ -45,6 +58,18 @@ The `details` JSON column is parsed once, at read, with Zod, in
 is the pattern. The schema describes what is **stored**, not the loosest thing
 that parses. A parse failure is an error with a message, never a swallowed empty
 object.
+
+## `Document.pathname` — the storage key, not the URL
+
+`Document` holds a blob object's key in `@vercel/blob`, separate from its
+public-looking `url`. Every blob is `access: "private"`, so `url` alone opens
+nothing — a fresh signed URL comes from `documents.downloadUrl` per request
+(`docs/travel/api.md`). `pathname` always starts with
+`agencies/<agencyId>/<bookingId or travelerId>/…`; the API refuses to
+register a row whose `pathname` does not carry the caller's own `agencyId`
+prefix. It is a second, storage-level barrier past the upload token itself —
+the token already scopes to one `pathname`, but a validated `create` call
+double-checks it before writing.
 
 ## Same rules as the CRM
 
