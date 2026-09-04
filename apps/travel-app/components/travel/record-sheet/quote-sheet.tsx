@@ -38,6 +38,7 @@ import {
 	OptionsEditor,
 	type QuoteOptionDraft,
 } from "@/components/travel/quotes/options-editor";
+import { SharePanel } from "@/components/travel/quotes/share-panel";
 import {
 	QUOTE_STATUSES,
 	quoteStatusLabel,
@@ -317,6 +318,14 @@ export function QuoteSheet({ quoteId }: { quoteId: string }) {
 		</DetailSheetBody>
 	);
 
+	const shareTab = (
+		<DetailSheetBody>
+			<DetailSheetSection>
+				<SharePanel quoteId={quoteId} />
+			</DetailSheetSection>
+		</DetailSheetBody>
+	);
+
 	const timelineTab = <Timeline anchor={{ quoteId }} />;
 
 	return (
@@ -391,6 +400,12 @@ export function QuoteSheet({ quoteId }: { quoteId: string }) {
 						label: "Options",
 						count: data?.options.length ?? null,
 						content: optionsTab,
+						keepMounted: true,
+					},
+					{
+						value: "share",
+						label: "Share",
+						content: shareTab,
 						keepMounted: true,
 					},
 					{
