@@ -61,7 +61,7 @@ export function formatAmount(value: number, currency = "usd"): string {
 	const whole = Number.isInteger(value);
 	const digits = fractionDigits(code);
 
-	return new Intl.NumberFormat(undefined, {
+	return new Intl.NumberFormat("en-US", {
 		style: "currency",
 		currency: code,
 		minimumFractionDigits: whole ? 0 : Math.min(2, digits),
@@ -70,7 +70,7 @@ export function formatAmount(value: number, currency = "usd"): string {
 }
 
 export function formatAmountCompact(value: number, currency = "usd"): string {
-	return new Intl.NumberFormat(undefined, {
+	return new Intl.NumberFormat("en-US", {
 		style: "currency",
 		currency: displayCurrencyCode(currency),
 		notation: "compact",
