@@ -32,6 +32,10 @@ export function canRecordPayment(role: AgencyRole | null): boolean {
 	return isAgencyAdmin(role) || role === "accountant";
 }
 
+export function canManageCommission(role: AgencyRole | null): boolean {
+	return isAgencyAdmin(role) || role === "accountant";
+}
+
 export type AgencyMemberReader = Pick<Db, "member">;
 
 export async function agencyRoleOf(

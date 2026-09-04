@@ -4,6 +4,7 @@ export {
 	type AgencyRole,
 	agencyRoleOf,
 	canManageAgency,
+	canManageCommission,
 	canManageMembers,
 	canRecordPayment,
 	canSeeMargins,
