@@ -7,8 +7,10 @@ import * as commissionContracts from "../src/commissions/commissions.contracts";
 import * as currencyContracts from "../src/currency/currency.contracts";
 import * as customerContracts from "../src/customers/customers.contracts";
 import * as dashboardContracts from "../src/dashboard/dashboard.contracts";
+import * as documentContracts from "../src/documents/documents.contracts";
 import * as fieldContracts from "../src/fields/fields.contracts";
 import * as paymentContracts from "../src/payments/payments.contracts";
+import * as quoteShareContracts from "../src/quote-share/quote-share.contracts";
 import * as quoteContracts from "../src/quotes/quotes.contracts";
 import * as savedViewContracts from "../src/saved-views/saved-views.contracts";
 import * as supplierContracts from "../src/suppliers/suppliers.contracts";
@@ -59,9 +61,11 @@ const schemas = [
 	...collect("currency", currencyContracts),
 	...collect("customers", customerContracts),
 	...collect("dashboard", dashboardContracts),
+	...collect("documents", documentContracts),
 	...collect("fields", fieldContracts),
 	...collect("payments", paymentContracts),
 	...collect("quotes", quoteContracts),
+	...collect("quoteShare", quoteShareContracts),
 	...collect("savedViews", savedViewContracts),
 	...collect("suppliers", supplierContracts),
 	...collect("travelers", travelerContracts),

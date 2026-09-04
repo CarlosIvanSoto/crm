@@ -121,6 +121,12 @@ export class RemindersService {
 
 		one.created += await this.createPaymentTasks(scoped, agencyId, now, one);
 		one.created += await this.createDepartureTasks(scoped, agencyId, now, one);
+		one.created += await this.createTravelDocumentTasks(
+			scoped,
+			agencyId,
+			now,
+			one,
+		);
 
 		return one;
 	}
@@ -209,6 +215,90 @@ export class RemindersService {
 			occurredAt: now,
 			sourceKey: `departure:${booking.id}`,
 		}));
+
+		const result = await scoped.activity.createMany({
+			data,
+			skipDuplicates: true,
+		});
+
+		tally.skipped += data.length - result.count;
+
+		return result.count;
+	}
+
+	private async createTravelDocumentTasks(
+		scoped: ReturnType<typeof agencyDb>,
+		agencyId: string,
+		now: Date,
+		tally: { skipped: number },
+	): Promise<number> {
+		const windowEnd = new Date(
+			now.getTime() + REMINDERS.travelDocument.windowDays * DAY_MS,
+		);
+
+		const upcomingBooking = {
+			archivedAt: null,
+			status: { not: "CANCELLED" as const },
+			travelStartDate: { gte: now },
+			ownerId: { not: null },
+		};
+
+		const travelers = await scoped.traveler.findMany({
+			where: {
+				archivedAt: null,
+				documentExpiresAt: { gte: now, lt: windowEnd },
+				bookingTravelers: { some: { booking: upcomingBooking } },
+			},
+			take: REMINDERS.sweep.maxRowsPerAgency,
+			select: {
+				id: true,
+				firstName: true,
+				lastName: true,
+				documentExpiresAt: true,
+				bookingTravelers: {
+					where: { booking: upcomingBooking },
+					select: {
+						booking: {
+							select: {
+								id: true,
+								folio: true,
+								ownerId: true,
+								travelStartDate: true,
+							},
+						},
+					},
+				},
+			},
+		});
+
+		const data: Prisma.ActivityCreateManyInput[] = [];
+
+		for (const traveler of travelers) {
+			if (!traveler.documentExpiresAt) continue;
+
+			const booking = traveler.bookingTravelers
+				.map((row) => row.booking)
+				.sort(
+					(x, y) =>
+						(x.travelStartDate?.getTime() ?? 0) -
+						(y.travelStartDate?.getTime() ?? 0),
+				)[0];
+			if (!booking) continue;
+
+			data.push({
+				agencyId,
+				type: ActivityType.TASK,
+				subject: `Travel document expiring — ${traveler.firstName} ${traveler.lastName} (${booking.folio})`,
+				bookingId: booking.id,
+				createdById: booking.ownerId as string,
+				assignedToId: booking.ownerId,
+				dueAt: traveler.documentExpiresAt,
+				occurredAt: now,
+				sourceKey: `document-expiry:${traveler.id}:${traveler.documentExpiresAt.toISOString().slice(0, 10)}`,
+			});
+		}
+
+		if (data.length === 0) return 0;
 
 		const result = await scoped.activity.createMany({
 			data,

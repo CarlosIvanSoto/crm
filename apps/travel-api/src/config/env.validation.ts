@@ -86,6 +86,10 @@ export class EnvironmentVariables {
 
 	@IsOptional()
 	@IsString()
+	TRAVEL_QUOTE_FROM?: string;
+
+	@IsOptional()
+	@IsString()
 	REDIS_URL?: string;
 
 	@IsOptional()

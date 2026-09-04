@@ -103,6 +103,7 @@ export const travelerDetailOutput = travelerRowOutput.extend({
 	dietaryNotes: z.string().nullable(),
 	medicalNotes: z.string().nullable(),
 	loyalty: z.array(loyaltyOutput),
+	documentCount: z.number(),
 	updatedAt: z.string(),
 });
 

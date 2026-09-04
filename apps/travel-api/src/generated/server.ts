@@ -13,7 +13,8 @@ import { z } from "zod";
 
 const t = initTRPC.create();
 const publicProcedure = t.procedure;
-import { timelineInput, timelineOutput, timelineCountsInput, timelineCountsOutput, taskListInput, taskListOutput, activityCreateInput, activityCreateOutput, completeInput, completeOutput, completeManyInput, bulkResultOutput, assignInput, updateTaskInput, removeInput, removeOutput } from "../activities/activities.contracts";
+import { timelineInput, timelineOutput, timelineCountsInput, timelineCountsOutput, taskListInput, taskListOutput, activityCreateInput, activityCreateOutput, completeInput, completeOutput, completeManyInput, assignInput, updateTaskInput, removeInput } from "../activities/activities.contracts";
+import { bulkResultOutput, removeOutput, storageStatusOutput, uploadTokenInput, uploadTokenOutput, createDocumentInput, documentEntryOutput, documentListInput, documentListOutput, documentIdInput, downloadUrlOutput, updateDocumentInput, removeManyInput } from "../documents/documents.contracts";
 import { agencyProfileOutput, updateAgencyProfileInput, agencyMemberListOutput, invitationListOutput, inviteMemberInput, inviteMemberOutput, invitationIdInput, setMemberRoleInput, agencyMemberOutput, memberIdInput } from "../agency/agency.contracts";
 import { bookingListInput, bookingListOutput, bookingIdInput, bookingDetailOutput, bookingCreateInput, bookingSummaryOutput, bookingUpdateArgs, setBookingItemsInput, setBookingTravelersInput, bookingArchiveResultOutput, bookingBulkInput, bookingBulkResultOutput } from "../bookings/bookings.contracts";
 import { commissionListInput, commissionListOutput, commissionByBookingInput, commissionByBookingOutput, advisorReportOutput, supplierReportOutput, createCommissionInput, commissionSummaryOutput, updateCommissionInput, commissionRowOutput, commissionIdInput, commissionDeleteOutput, commissionBulkInput, commissionBulkResultOutput } from "../commissions/commissions.contracts";
@@ -22,6 +23,7 @@ import { customerListInput, customerListOutput, customerIdInput, customerDetailO
 import { dashboardSummaryInput, dashboardSummaryOutput } from "../dashboard/dashboard.contracts";
 import { fieldListInput, fieldListOutput, fieldByKeyInput, serializedFieldOutput, fieldEntityInput, fieldFiltersOutput, fieldIdInput, fieldCoverageOutput, fieldValuesInput, recordFieldListOutput, fieldCreateInput, fieldUpdateArgs, fieldReorderInput, fieldReorderOutput, setFieldValuesInput, fieldDeleteOutput } from "../fields/fields.contracts";
 import { paymentListInput, paymentListOutput, addPaymentInput, paymentSummaryOutput, recordPaymentInput, paymentIdInput, paymentDeleteOutput, addPayableInput } from "../payments/payments.contracts";
+import { publicTokenInput, publicQuoteOutput, publicAcceptInput, publicAcceptOutput, shareQuoteIdInput, shareStatusOutput, createShareInput, revokeShareOutput, sendQuoteInput, sendQuoteOutput } from "../quote-share/quote-share.contracts";
 import { quoteListInput, quoteListOutput, quoteIdInput, quoteDetailOutput, quoteCreateInput, quoteSummaryOutput, quoteUpdateArgs, setQuoteOptionsInput, acceptQuoteInput, acceptQuoteOutput, quoteArchiveResultOutput, quoteBulkInput, quoteBulkResultOutput } from "../quotes/quotes.contracts";
 import { savedViewListInput, savedViewListOutput, savedViewCreateInput, savedViewOutput, savedViewUpdateArgs, savedViewIdInput, savedViewDeleteOutput } from "../saved-views/saved-views.contracts";
 import { supplierListInput, supplierListOutput, supplierIdInput, supplierDetailOutput, supplierOptionsInput, supplierOptionOutput, supplierCreateInput, supplierSummaryOutput, supplierUpdateArgs, supplierArchiveResultOutput, supplierBulkInput, supplierBulkResultOutput } from "../suppliers/suppliers.contracts";
@@ -276,6 +278,39 @@ const appRouter = t.router({
       .output(dashboardSummaryOutput)
       .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
+  documents: t.router({
+    storage: publicProcedure
+      .output(storageStatusOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    uploadToken: publicProcedure
+      .input(uploadTokenInput)
+      .output(uploadTokenOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    create: publicProcedure
+      .input(createDocumentInput)
+      .output(documentEntryOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    list: publicProcedure
+      .input(documentListInput)
+      .output(documentListOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    downloadUrl: publicProcedure
+      .input(documentIdInput)
+      .output(downloadUrlOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    update: publicProcedure
+      .input(updateDocumentInput)
+      .output(documentEntryOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    remove: publicProcedure
+      .input(documentIdInput)
+      .output(removeOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    removeMany: publicProcedure
+      .input(removeManyInput)
+      .output(bulkResultOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
   fields: t.router({
     list: publicProcedure
       .input(fieldListInput)
@@ -362,6 +397,34 @@ const appRouter = t.router({
     removePayable: publicProcedure
       .input(paymentIdInput)
       .output(paymentDeleteOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  publicQuote: t.router({
+    view: publicProcedure
+      .input(publicTokenInput)
+      .output(publicQuoteOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    accept: publicProcedure
+      .input(publicAcceptInput)
+      .output(publicAcceptOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  quoteShare: t.router({
+    status: publicProcedure
+      .input(shareQuoteIdInput)
+      .output(shareStatusOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    create: publicProcedure
+      .input(createShareInput)
+      .output(shareStatusOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    revoke: publicProcedure
+      .input(shareQuoteIdInput)
+      .output(revokeShareOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    send: publicProcedure
+      .input(sendQuoteInput)
+      .output(sendQuoteOutput)
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   quotes: t.router({

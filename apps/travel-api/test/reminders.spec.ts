@@ -222,4 +222,71 @@ describe("reminder sweep", () => {
 			old.reminderSentAt?.getTime() ?? 0,
 		);
 	});
+
+	it("writes a task when a traveler's document expires before departure", async () => {
+		const traveler = await db.traveler.create({
+			data: {
+				agencyId: a.agencyId,
+				firstName: "Pat",
+				lastName: "Traveler",
+				documentExpiresAt: new Date(Date.now() + 15 * DAY),
+			},
+		});
+		await db.bookingTraveler.create({
+			data: {
+				agencyId: a.agencyId,
+				bookingId: bookingA,
+				travelerId: traveler.id,
+			},
+		});
+
+		await reminders.sweepAllAgencies();
+
+		const expiresAt = traveler.documentExpiresAt as Date;
+		const sourceKey = `document-expiry:${traveler.id}:${expiresAt.toISOString().slice(0, 10)}`;
+		const task = await db.activity.findFirst({
+			where: { agencyId: a.agencyId, sourceKey },
+		});
+
+		expect(task).not.toBeNull();
+		expect(task?.assignedToId).toBe(a.ownerUserId);
+		expect(task?.bookingId).toBe(bookingA);
+
+		await db.bookingTraveler.deleteMany({ where: { travelerId: traveler.id } });
+		await db.traveler.delete({ where: { id: traveler.id } });
+	});
+
+	it("does not duplicate the document-expiry task on a second run", async () => {
+		const traveler = await db.traveler.create({
+			data: {
+				agencyId: a.agencyId,
+				firstName: "Sam",
+				lastName: "Traveler",
+				documentExpiresAt: new Date(Date.now() + 20 * DAY),
+			},
+		});
+		await db.bookingTraveler.create({
+			data: {
+				agencyId: a.agencyId,
+				bookingId: bookingA,
+				travelerId: traveler.id,
+			},
+		});
+
+		const first = await reminders.sweepAllAgencies();
+		const second = await reminders.sweepAllAgencies();
+
+		expect(first.created).toBeGreaterThan(0);
+		expect(second.created).toBe(0);
+
+		const expiresAt = traveler.documentExpiresAt as Date;
+		const sourceKey = `document-expiry:${traveler.id}:${expiresAt.toISOString().slice(0, 10)}`;
+		const rows = await db.activity.count({
+			where: { agencyId: a.agencyId, sourceKey },
+		});
+		expect(rows).toBe(1);
+
+		await db.bookingTraveler.deleteMany({ where: { travelerId: traveler.id } });
+		await db.traveler.delete({ where: { id: traveler.id } });
+	});
 });
