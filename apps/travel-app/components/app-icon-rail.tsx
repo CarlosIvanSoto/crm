@@ -2,6 +2,7 @@
 
 import Dashboard from "@carbon/icons-react/es/Dashboard";
 import Delivery from "@carbon/icons-react/es/Delivery";
+import DocumentAttachment from "@carbon/icons-react/es/DocumentAttachment";
 import DocumentBlank from "@carbon/icons-react/es/DocumentBlank";
 import Money from "@carbon/icons-react/es/Money";
 import Plane from "@carbon/icons-react/es/Plane";
@@ -58,6 +59,12 @@ const ITEMS: RailItem[] = [
 		match: "prefix",
 	},
 	{ title: "Tasks", href: "/tasks", icon: Task, match: "prefix" },
+	{
+		title: "Documents",
+		href: "/documents",
+		icon: DocumentAttachment,
+		match: "prefix",
+	},
 	{ title: "Settings", href: "/settings", icon: Settings, match: "prefix" },
 ];
 
