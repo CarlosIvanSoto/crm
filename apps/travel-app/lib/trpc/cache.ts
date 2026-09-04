@@ -66,7 +66,7 @@ export function useTravelCache(): TravelCache {
 	const activityKeys = () => [
 		trpc.activities.timeline.pathKey(),
 		trpc.activities.timelineCounts.queryKey(),
-		trpc.activities.myTasks.queryKey(),
+		trpc.activities.tasks.queryKey(),
 	];
 
 	const listKeys = () => [
@@ -193,6 +193,7 @@ export function useTravelCache(): TravelCache {
 					...listKeys(),
 					trpc.customers.byId.queryKey(),
 					trpc.bookings.byId.queryKey(),
+					trpc.dashboard.summary.queryKey(),
 				],
 				options,
 			),

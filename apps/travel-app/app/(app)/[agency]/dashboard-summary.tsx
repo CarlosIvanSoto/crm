@@ -86,7 +86,8 @@ export function DashboardSummary() {
 		);
 	}
 
-	const { month, overdue, departures, unconverted, baseCurrency } = summary;
+	const { month, overdue, departures, tasks, unconverted, baseCurrency } =
+		summary;
 	const money = (value: number) => formatAmountCompact(value, baseCurrency);
 	const exact = (value: number) => formatAmount(value, baseCurrency);
 
@@ -279,6 +280,30 @@ export function DashboardSummary() {
 									))}
 							</SimpleTable>
 						)}
+					</CardPanel>
+				</Card>
+
+				<Card className="min-w-0">
+					<CardHeader>
+						<CardTitle>My tasks</CardTitle>
+						<CardDescription>
+							Open tasks assigned to you, and how many are past due
+						</CardDescription>
+					</CardHeader>
+					<CardPanel>
+						<div className="flex flex-col gap-2 px-5 py-6 md:px-6">
+							<span className="font-medium text-3xl tracking-tight tabular-nums">
+								{tasks.open}
+							</span>
+							<StatusIndicator
+								tone={tasks.overdue === 0 ? "success" : "error"}
+								label={
+									tasks.overdue === 0
+										? "Nothing past due"
+										: `${formatCount(tasks.overdue, "task")} past due`
+								}
+							/>
+						</div>
 					</CardPanel>
 				</Card>
 			</DashboardRow>

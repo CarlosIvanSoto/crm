@@ -21,16 +21,19 @@ import {
 	DetailSheetProperties,
 	DetailSheetProperty,
 	DetailSheetSection,
+	DetailSheetTabs,
 } from "@/components/detail-sheet";
 import { LocalRelativeTime } from "@/components/local-date-time";
+import { Timeline } from "@/components/travel/timeline/timeline";
 import { useTravelCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
-import { useRecordStack } from "./record-stack";
+import { useRecordSheetView, useRecordStack } from "./record-stack";
 
 export function CustomerSheet({ customerId }: { customerId: string }) {
 	const trpc = useTRPC();
 	const cache = useTravelCache();
 	const { stack, close } = useRecordStack();
+	const view = useRecordSheetView("overview");
 
 	const customer = useQuery(
 		trpc.customers.byId.queryOptions({ id: customerId }),
@@ -92,6 +95,46 @@ export function CustomerSheet({ customerId }: { customerId: string }) {
 
 	const data = customer.data;
 	const archived = Boolean(data?.archivedAt);
+
+	const overview = (
+		<DetailSheetBody>
+			<DetailSheetSection title="Details">
+				<DetailSheetProperties>
+					<DetailSheetProperty label="Type">
+						{data ? typeLabel(data.type) : "—"}
+					</DetailSheetProperty>
+					<DetailSheetProperty label="Email">
+						{data?.email ?? "—"}
+					</DetailSheetProperty>
+					<DetailSheetProperty label="Phone">
+						{data?.phone ?? "—"}
+					</DetailSheetProperty>
+					<DetailSheetProperty label="WhatsApp">
+						{data?.whatsapp ?? "—"}
+					</DetailSheetProperty>
+					<DetailSheetProperty label="Legal name">
+						{data?.legalName ?? "—"}
+					</DetailSheetProperty>
+					<DetailSheetProperty label="Tax ID">
+						{data?.taxId ?? "—"}
+					</DetailSheetProperty>
+					<DetailSheetProperty label="Owner">
+						{data?.owner?.name ?? "Unassigned"}
+					</DetailSheetProperty>
+					<DetailSheetProperty label="Created">
+						{data ? <LocalRelativeTime date={data.createdAt} /> : "—"}
+					</DetailSheetProperty>
+				</DetailSheetProperties>
+			</DetailSheetSection>
+
+			<DetailSheetSection title="Activity">
+				<div className="flex flex-wrap gap-4 text-muted-foreground text-xs">
+					<span>{data?.quoteCount ?? 0} quotes</span>
+					<span>{data?.bookingCount ?? 0} bookings</span>
+				</div>
+			</DetailSheetSection>
+		</DetailSheetBody>
+	);
 
 	return (
 		<>
@@ -162,43 +205,19 @@ export function CustomerSheet({ customerId }: { customerId: string }) {
 				}
 			/>
 
-			<DetailSheetBody>
-				<DetailSheetSection title="Details">
-					<DetailSheetProperties>
-						<DetailSheetProperty label="Type">
-							{data ? typeLabel(data.type) : "—"}
-						</DetailSheetProperty>
-						<DetailSheetProperty label="Email">
-							{data?.email ?? "—"}
-						</DetailSheetProperty>
-						<DetailSheetProperty label="Phone">
-							{data?.phone ?? "—"}
-						</DetailSheetProperty>
-						<DetailSheetProperty label="WhatsApp">
-							{data?.whatsapp ?? "—"}
-						</DetailSheetProperty>
-						<DetailSheetProperty label="Legal name">
-							{data?.legalName ?? "—"}
-						</DetailSheetProperty>
-						<DetailSheetProperty label="Tax ID">
-							{data?.taxId ?? "—"}
-						</DetailSheetProperty>
-						<DetailSheetProperty label="Owner">
-							{data?.owner?.name ?? "Unassigned"}
-						</DetailSheetProperty>
-						<DetailSheetProperty label="Created">
-							{data ? <LocalRelativeTime date={data.createdAt} /> : "—"}
-						</DetailSheetProperty>
-					</DetailSheetProperties>
-				</DetailSheetSection>
-
-				<DetailSheetSection title="Activity">
-					<div className="flex flex-wrap gap-4 text-muted-foreground text-xs">
-						<span>{data?.quoteCount ?? 0} quotes</span>
-						<span>{data?.bookingCount ?? 0} bookings</span>
-					</div>
-				</DetailSheetSection>
-			</DetailSheetBody>
+			<DetailSheetTabs
+				value={view.tab}
+				onValueChange={view.setTab}
+				tabs={[
+					{ value: "overview", label: "Overview", content: overview },
+					{
+						value: "timeline",
+						label: "Timeline",
+						content: <Timeline anchor={{ customerId }} />,
+						keepMounted: true,
+					},
+				]}
+			/>
 		</>
 	);
 }

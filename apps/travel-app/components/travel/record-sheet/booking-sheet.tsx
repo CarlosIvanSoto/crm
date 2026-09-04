@@ -49,6 +49,7 @@ import {
 	BOOKING_STATUSES,
 	bookingStatusLabel,
 } from "@/components/travel/status-labels";
+import { Timeline } from "@/components/travel/timeline/timeline";
 import { canManageCommission, canRecordPayment } from "@/lib/roles";
 import { useTravelCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
@@ -324,6 +325,8 @@ export function BookingSheet({ bookingId }: { bookingId: string }) {
 		</DetailSheetBody>
 	);
 
+	const timelineTab = <Timeline anchor={{ bookingId }} />;
+
 	return (
 		<>
 			<DetailSheetHeader
@@ -414,6 +417,12 @@ export function BookingSheet({ bookingId }: { bookingId: string }) {
 						value: "commissions",
 						label: "Commissions",
 						content: commissionsTab,
+					},
+					{
+						value: "timeline",
+						label: "Timeline",
+						content: timelineTab,
+						keepMounted: true,
 					},
 				]}
 			/>

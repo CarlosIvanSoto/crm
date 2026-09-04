@@ -7,6 +7,7 @@ import Money from "@carbon/icons-react/es/Money";
 import Plane from "@carbon/icons-react/es/Plane";
 import Settings from "@carbon/icons-react/es/Settings";
 import Store from "@carbon/icons-react/es/Store";
+import Task from "@carbon/icons-react/es/Task";
 import UserMultiple from "@carbon/icons-react/es/UserMultiple";
 import Wallet from "@carbon/icons-react/es/Wallet";
 import { Button } from "@crm/ui/components/button";
@@ -56,6 +57,7 @@ const ITEMS: RailItem[] = [
 		icon: Wallet,
 		match: "prefix",
 	},
+	{ title: "Tasks", href: "/tasks", icon: Task, match: "prefix" },
 	{ title: "Settings", href: "/settings", icon: Settings, match: "prefix" },
 ];
 

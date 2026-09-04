@@ -20,6 +20,13 @@ export const PAX_TYPES = [
 	{ value: "INFANT", label: "Infant" },
 ] as const;
 
+export const TASK_WINDOWS = [
+	{ value: "overdue", label: "Overdue" },
+	{ value: "today", label: "Today" },
+	{ value: "week", label: "This week" },
+	{ value: "all", label: "All" },
+] as const;
+
 export function quoteStatusLabel(status: string): string {
 	return (
 		QUOTE_STATUSES.find((entry) => entry.value === status)?.label ?? status
@@ -34,4 +41,8 @@ export function bookingStatusLabel(status: string): string {
 
 export function paxTypeLabel(type: string): string {
 	return PAX_TYPES.find((entry) => entry.value === type)?.label ?? type;
+}
+
+export function taskWindowLabel(window: string): string {
+	return TASK_WINDOWS.find((entry) => entry.value === window)?.label ?? window;
 }
