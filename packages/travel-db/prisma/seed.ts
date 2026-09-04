@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID, scrypt } from "node:crypto";
+import { createHash, randomBytes, randomUUID, scrypt } from "node:crypto";
 import { db } from "../src/client";
 import { COUNTER_KIND, formatFolio } from "../src/folio";
 
@@ -225,6 +225,17 @@ async function seedAgency(
 						},
 					],
 				},
+			},
+		});
+
+		await db.quoteShare.create({
+			data: {
+				agencyId,
+				quoteId: quote.id,
+				tokenHash: createHash("sha256")
+					.update(randomBytes(32).toString("base64url"))
+					.digest("hex"),
+				createdById: ownerId,
 			},
 		});
 
