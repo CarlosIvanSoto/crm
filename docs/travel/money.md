@@ -36,3 +36,28 @@ error. Every total, chart, average and margin reads `sellBaseAmount` /
 - **`OVERDUE` is not a stored status.** It is `status = SCHEDULED AND dueDate <
   now()`. A stored status needs a cron to keep it true and drifts the day the
   cron fails.
+
+## Commissions
+
+`Commission` is the advisor's cut of one booking. `basis` picks the base:
+
+- `MARGIN` — `sellTotalBase − costTotalBase`. `SELL` — `sellTotalBase`. Both are
+  already in base currency. `amountBase = basisBaseAmount × rate`. `fxRate` is
+  `null`: no conversion happened.
+- `FIXED` — the advisor types `amount` + `currency`. `ConversionService.itemFields`
+  fills `amountBase`, `baseCurrency`, `fxRate`, `fxRateAt`, the same as a payment.
+
+**The amount is frozen on create.** A later itinerary change does not move it. A
+`recalculate` mutation re-reads the booking totals and re-freezes. This is
+`docs/currency.md`'s "resolve once" rule applied to the advisor's pay.
+
+**Only `amountBase` is summed.** A missing rate is `amountBase = null`, disclosed
+with a `missingRate` count next to every total, never zeroed.
+
+`status` runs `PENDING → APPROVED → PAID`, with `VOID` from any state. `markPaid`
+only stamps `paidAt`; it does not write a cash-out row.
+
+`canManageCommission` (admin or accountant) gates every write. An `agent` sees
+only their own rows — the `userId` filter is set by the service, never an input.
+`bookings` and `quotes` now null `sellTotalBase`, `costTotalBase` and
+`marginBase` for a role without `canSeeMargins`.

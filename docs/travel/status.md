@@ -1,6 +1,6 @@
 # Producto de viajes — estado de implementación
 
-Fecha de corte: 2026-09-03. Plan aprobado: `docs/travel/plan_01.md`. La Fase 2
+Fecha de corte: 2026-09-04. Plan aprobado: `docs/travel/plan_01.md`. La Fase 2
 se corta en dos rebanadas: `docs/travel/plan_02.md` es la Fase 2A.
 
 Este archivo dice qué está hecho, qué falta y en qué orden seguir. Las reglas de
@@ -20,13 +20,19 @@ cada área están en `docs/travel/domain.md`, `docs/travel/money.md` y
 | 3A | Cableado de `apps/travel-app`, auth, shell, `customers` de punta a punta | HECHO |
 | 3B | `travelers`/`suppliers`/`quotes`/`bookings`/`payments` en la app | HECHO |
 | 3C | Tablero (módulo `dashboard` en la API) y ajustes | HECHO |
-| 4 | Comisiones al asesor | PLANEADO — `docs/travel/plan_04.md` |
-| — | Tareas con cron, documento de cotización, `apps/travel-agent` | FUERA DE ALCANCE. Cada una necesita su plan |
+| 4A | Comisiones — modelo `Commission`, módulo API, gating de margen | HECHO |
+| 4B | Comisiones en la app | HECHO |
+| 5A | Tareas y recordatorios — `Activity.assignedToId`, bandeja en el router `activities`, barrido con cron | PENDIENTE |
+| 5B | Timeline en las fichas, bandeja de tareas y tarjeta del tablero en la app | PENDIENTE |
+| — | Documento de cotización, `apps/travel-agent` | FUERA DE ALCANCE. Cada una necesita su plan |
 
 El plan de la Fase 3 es `docs/travel/plan_03.md`. Se corta en tres rebanadas.
 
 El plan de la Fase 4 es `docs/travel/plan_04.md`. Cubre **solo comisiones**. Se
-corta en dos rebanadas: 4A datos y API, 4B la app. Sin código todavía.
+corta en dos rebanadas: 4A datos y API (HECHO), 4B la app (HECHO).
+
+El plan de la Fase 5 es `docs/travel/plan_07.md`. Cubre **solo tareas y
+recordatorios**. Se corta en dos rebanadas: 5A datos y API, 5B la app.
 
 ---
 
@@ -610,7 +616,8 @@ app/(app)/[agency]/
 - **`settings/fields`** usa `@travel/db/fields-shape` (módulo hoja, sin Prisma) en
   el cliente, nunca `@travel/db/fields`. Selector de entidad en la URL (`?entity`),
   reordenar con `SortableList`, editor en un `Sheet`.
-- **`record-stack.ts`** ya tiene su `timelineTabParser` desde 3B; 3C no lo toca.
+- **`record-stack.ts`** no tiene `timelineTabParser`. `SEARCH_PARAM` de viajes
+  no tiene la llave `timeline`. La Fase 5B la agrega.
 
 ### Verificado
 
@@ -632,66 +639,246 @@ app/(app)/[agency]/
 
 ---
 
-## Fase 4 — PLANEADO — comisiones al asesor
+## Fase 4A — HECHO — modelo `Commission` y módulo API
 
 Plan: `docs/travel/plan_04.md`. Alcance: **solo comisiones**. Tareas, documento
-de cotización y `apps/travel-agent` quedan fuera. Sin código todavía.
+de cotización y `apps/travel-agent` quedan fuera. 4B (la app) es pendiente.
 
 ### Problema
 
-La agencia sabe cuánto vendió y cuánto ganó. No sabe cuánto le debe a cada
-asesor. Falta la fila que congela la comisión y el reporte que la suma.
+La agencia sabe cuánto vendió y cuánto ganó. No sabía cuánto le debe a cada
+asesor. Ahora existe la fila que congela la comisión y los reportes que la suman.
 
-### Rebanada 4A — datos y API
+### Archivos
 
-- **Modelo `Commission`** en `packages/travel-db/prisma/schema.prisma`. Plantilla:
-  `Payment`. Enums `CommissionBasis` (`MARGIN`/`SELL`/`FIXED`) y
-  `CommissionStatus` (`PENDING`/`APPROVED`/`PAID`/`VOID`).
+```
+packages/travel-db/prisma/schema.prisma       enums CommissionBasis/CommissionStatus, modelo Commission
+packages/travel-db/prisma/migrations/20260903224327_commission/
+packages/travel-db/src/tenancy.ts             + "Commission" en TENANT_MODELS
+packages/travel-db/prisma/seed.ts             2 comisiones por agencia sembrada; AgencySettings gana los defaults
+packages/travel-db/test/tenancy.spec.ts       + caso de aislamiento de commission (12 casos)
+packages/travel-auth/src/agency.ts            + canManageCommission (admin o contable)
+packages/travel-auth/src/index.ts             exporta el predicado
+packages/travel-auth/README.md               aviso del generador incluye las relaciones de comisión
+apps/travel-api/src/commissions/              module + router + service + contracts
+apps/travel-api/src/app.module.ts             + CommissionsModule
+apps/travel-api/src/generated/server.ts       regenerado: 14 routers, 118 procedimientos
+apps/travel-api/test/commissions.spec.ts      8 casos
+apps/travel-api/test/{helpers,agency-id-inputs,tenancy}.spec.ts   ajustes
+```
+
+### Decisiones
+
 - **`basisBaseAmount` y `amountBase` se congelan al crear.** `MARGIN` y `SELL`
-  nacen en moneda base. `FIXED` pasa por `ConversionService.itemFields()`. Solo
-  `amountBase` se suma. Tasa faltante es `null`, nunca cero.
-- **`"Commission"` entra en `TENANT_MODELS`** (`packages/travel-db/src/tenancy.ts`).
-  Sin eso el modelo queda sin alcance.
+  nacen en moneda base, sin `fxRate`. `FIXED` pasa por
+  `ConversionService.itemFields()`. Solo `amountBase` se suma. Tasa faltante es
+  `null`; `list` y `byAdvisor` devuelven `missingRate`. Nunca cero.
+- **`recalculate` es la única vía para mover el monto.** Relee los totales de la
+  reserva y re-congela. Lanza si la comisión está `PAID` o `VOID`.
 - **`AgencySettings`** gana `defaultCommissionBasis` y `defaultCommissionRate`.
-- **Predicado `canManageCommission`** en `packages/travel-auth/src/agency.ts`
-  (admin o contable). Un `agent` ve solo sus filas; el filtro `userId` es del
-  servicio, nunca un input.
-- **Módulo `commissions`** en `apps/travel-api/src/commissions/`, forma de cuatro
-  archivos. Procedimientos: `list`, `byBooking`, `create`, `update`, `approve`,
-  `markPaid`, `void`, `remove`, `recalculate`, `byAdvisor`, `bySupplier`.
-- **Cierra el pendiente de 3C:** `bookings.service.ts:133,236` y
-  `quotes.service.ts:226` reciben `role` y anulan `marginBase` sin `canSeeMargins`.
-- **Pruebas:** `commissions.spec.ts` con aislamiento entre agencias, filtro por
-  rol, congelado del monto, tasa faltante, `FIXED` en otra moneda.
+  Son los valores por defecto del formulario de 4B, no una regla que corre sola.
+- **`canManageCommission` (admin o contable)** guarda `create`, `update`,
+  `approve`, `markPaid`, `void`, `remove`, `recalculate`, y ambos bulk.
+- **Un `agent` ve solo sus filas** en `list` y en `byAdvisor`. El filtro
+  `userId` lo pone el servicio, nunca es un input. `bySupplier` exige
+  `canSeeMargins`.
+- **Cierra el pendiente de 3C:** `bookings.list`, `bookings.byId` y
+  `quotes.byId` reciben `role` y anulan `sellTotalBase`, `costTotalBase` y
+  `marginBase` sin `canSeeMargins`. `setItems`, `setTravelers` y `setOptions`
+  pasan el `role` a `byId`.
 
-### Rebanada 4B — la app
+### Verificado
 
-- **Lista** `app/(app)/[agency]/commissions/`, plantilla de cinco archivos de
-  `suppliers/`. Facetas `status` y `basis`. El clic abre la ficha de la reserva.
-- **Panel compartido** `commissions-panel.tsx`, forma de `payments-panel.tsx`.
-  Página y pestaña de `booking-sheet.tsx` con el mismo componente.
-- **Reportes** by advisor y by supplier, dos `SimpleTable` en un `DashboardRow`.
-  Tarjeta "Top advisors" en el tablero.
-- **Ajustes** `settings/commissions/` escribe los valores por defecto por
-  `agency.updateProfile`.
-- **Cableado:** renglón en `app-icon-rail.tsx`, `/commissions` en `proxy.ts`
-  `SECTIONS`, `cache.commission()` en `lib/trpc/cache.ts`.
+- `bun run check-types` — 22/22.
+- `bun run lint` — pasa. `bun run lint:slop` — pasa.
+- `bun run --filter=@travel/db test` — 12 casos, contra Postgres 5433.
+- `bun run --filter=travel-api test` — 186 casos.
+- Arranque real: `/health` responde `up`; `/openapi.json` expone las 12 rutas
+  `/commissions/*`.
 
-### Documentos al cerrar
+### Pendiente de 4A
 
-`docs/travel/money.md` gana la sección "Comisiones". `docs/travel/api.md` gana el
-router `commissions` y `canManageCommission`. Este archivo gana 4A y 4B con
-verificado y pendientes.
+- La base `travel` local no se resembró: `prisma migrate reset` necesita el
+  consentimiento del usuario. La migración sí está aplicada. `travel_test` se
+  reconstruyó con la migración.
+- Recorrido manual con dos cuentas: crear una comisión `MARGIN`, verificar el
+  congelado, `recalculate`, una `FIXED` en otra moneda, y que un `agent` no vea
+  el margen de la reserva.
 
-### Riesgos
+---
 
-- `Commission` fuera de `TENANT_MODELS` fuga entre agencias.
+## Fase 4B — HECHO — comisiones en `apps/travel-app`
+
+Plan: `docs/travel/plan_04.md`, rebanada 4B. La interfaz de comisiones sobre el
+módulo API de 4A. Rutas y textos en inglés, como 3A a 3C.
+
+### Problema
+
+La API sabía cuánto debe la agencia a cada asesor. La app no lo mostraba. Un
+asesor no podía crear ni ver una comisión desde el navegador.
+
+### Cambio en la API
+
+`agency.updateProfile` y `agency.profile` no exponían los defaults de comisión de
+`AgencySettings`. Ahora sí, para que la pantalla de ajustes los escriba.
+
+| Archivo | Cambio |
+| --- | --- |
+| `apps/travel-api/src/agency/agency.contracts.ts` | `+ defaultCommissionBasis` y `+ defaultCommissionRate` en `agencyProfileOutput` y `updateAgencyProfileInput` |
+| `apps/travel-api/src/agency/agency.service.ts` | `profile()` devuelve ambos; `updateProfile()` los escribe. `Decimal` entra, `number` sale |
+| `apps/travel-api/src/generated/server.ts` | regenerado: 14 routers, 118 procedimientos |
+
+`updateProfile` sigue con la guarda `canManageAgency` (owner o admin). Un
+contable gestiona comisiones sueltas pero no los defaults de la agencia.
+
+### Archivos nuevos — `apps/travel-app`
+
+```
+app/(app)/[agency]/commissions/
+  page.tsx                       servidor, prefetch + HydrateClient
+  commissions-search-params.ts   createListSearchParams, facetas status y basis; quita fields/archived
+  commissions-table.tsx          cliente, COLUMNS + useTableQuery; el clic abre la reserva en pestaña commissions
+  commissions-bulk-actions.tsx   aprobar y marcar pagado en lote
+  create-commission-sheet.tsx    Sheet por ?new=true; picker de reserva y de asesor
+  reports/page.tsx               servidor, prefetch byAdvisor
+  reports/commissions-reports.tsx   dos SimpleTable en un DashboardRow; by supplier exige canSeeMargins
+
+app/(app)/[agency]/settings/commissions/
+  page.tsx  commissions-form.tsx   defaults por agency.updateProfile
+
+components/travel/commissions/
+  commission-meta.ts             COMMISSION_STATUSES, COMMISSION_BASES, labels, variante de badge
+  commission-dialogs.tsx         AddCommissionDialog, con bookingId fijo
+  commissions-panel.tsx          panel compartido; página y pestaña de booking-sheet
+  commissions-links.tsx          ReportsLink y BackToListLink, cada uno en su Suspense
+```
+
+### Cambios fuera de los archivos nuevos
+
+| Archivo | Cambio |
+| --- | --- |
+| `apps/travel-app/lib/roles.ts` | `+ canManageCommission` en el re-export de `@travel/auth/agency` |
+| `apps/travel-app/components/travel/record-sheet/booking-sheet.tsx` | pestaña `commissions` con `CommissionsPanel`; `canManageCommission(me.role)` |
+| `apps/travel-app/components/app-icon-rail.tsx` | `+ { title: "Commissions", href: "/commissions", icon: Wallet }` entre Payments y Settings |
+| `apps/travel-app/proxy.ts` | `+ "/commissions"` en `SECTIONS` |
+| `apps/travel-app/lib/trpc/cache.ts` | `+ commission(bookingId?)`; `booking()` invalida `commissions.list`, `byBooking` y `byAdvisor` |
+| `apps/travel-app/app/(app)/[agency]/settings/settings-sidebar.tsx` | `+ { title: "Commissions", href: "/settings/commissions" }` |
+| `apps/travel-app/app/(app)/[agency]/page.tsx` | prefetch de `commissions.byAdvisor` |
+| `apps/travel-app/app/(app)/[agency]/dashboard-summary.tsx` | tarjeta "Top advisors" en un `DashboardRow` nuevo |
+
+### Decisiones de 4B
+
+- **La comisión no es un `RecordKind`.** La tabla no abre ficha propia. El clic
+  abre la ficha de la **reserva** con `openRecord({ kind: "booking", id })` y
+  `setTab("commissions")`. Sin cambio en `record-stack.ts` ni en `BY_ID`.
+- **`commissions.list` no tiene `fields` ni `archived`.** `toCommissionListInput`
+  los quita del resultado de `toInput`. Sin `SavedViewsMenu` ni botón de
+  archivado: comisiones no tiene `FieldEntity` ni estado archivado.
+- **El botón y el 403 leen el mismo predicado.** `canManageCommission` de
+  `@travel/auth/agency` esconde crear, aprobar, pagar, recalcular, anular y
+  borrar. Un `agent` ve solo sus filas y ningún control de escritura.
+- **La creación desde la ficha de la reserva** usa `AddCommissionDialog` con el
+  `bookingId` en contexto. La lista usa el `Sheet` con picker de reserva.
+- **El reporte by supplier** solo carga si `canSeeMargins`; para un `agent` la
+  tarjeta dice "Not available for your role", no lanza.
+- **La tarjeta "Top advisors"** ordena por comisión y muestra hasta 6 filas.
+  `StatGroup` se queda con cuatro `StatCard`.
+- **Tasa faltante declarada, nunca cero.** La lista y el panel cuentan las filas
+  sin `amountBase` junto al total.
+- **`ReportsLink` y `BackToListLink`** usan `useAgencyUrl` (hook de cliente
+  dinámico); cada uno va en su propio `<Suspense>` para no romper el prerender.
+
+### Verificado
+
+- `bun run check-types` — 22/22.
+- `bun run lint` — 14/14 (warnings de barrel preexistentes: `lib/roles.ts`,
+  `postcss.config.mjs`).
+- `bun run lint:slop` — pasa.
+- `bun run --filter=travel-app build` — pasa. Las 3 rutas nuevas prerenderizan.
+  Sin `Module not found: dns`. Frontera cliente/servidor limpia.
+- `bun run --filter=travel-api test` — 186 casos, sin cambios (4B no toca la
+  lógica del servicio; el cambio de `agency` no rompe ninguna prueba).
+
+### Pendiente de 4B
+
+- El `next dev` real no se ejecutó. `build`, `check-types`, `lint` y `test` sí.
+- La base `travel` local no se resembró desde 4A. `prisma migrate reset` necesita
+  el consentimiento del usuario.
+- Recorrido manual con dos cuentas: crear una comisión `MARGIN` desde la ficha de
+  la reserva, verificar el congelado, `recalculate`, una `FIXED` en otra moneda,
+  quitar una tasa y ver el faltante declarado, entrar con un `agent` y ver solo
+  sus filas sin botones, y pegar la URL de una comisión ajena desde la segunda
+  agencia.
+- El picker de reserva de `create-commission-sheet.tsx` lista las 50 reservas más
+  recientes. Sin búsqueda: no hay `bookings.options`. La vía principal de
+  creación es el panel de la ficha de la reserva.
+
+### Riesgos abiertos de comisiones
+
 - El monto congelado se desincroniza si cambia el itinerario. `recalculate` es
-  manual.
-- `ExchangeRate` global: una comisión `FIXED` usa una tasa que otra agencia
-  sobrescribe con `MANUAL`.
-- Sin tasa por asesor, sin creación automática al confirmar, sin fila de egreso
-  al pagar.
+  manual. La interfaz aún no marca la fila desincronizada.
+- `ExchangeRate` global: una comisión `FIXED` en otra moneda usa una tasa que
+  otra agencia sobrescribe con `MANUAL`.
+- Sin tasa por asesor (`AgencySettings` guarda una sola por agencia). Sin
+  creación automática al confirmar. `markPaid` no escribe una fila de egreso.
+
+---
+
+## Fase 5 — PENDIENTE — tareas y recordatorios
+
+Plan: `docs/travel/plan_07.md`. Alcance: **solo tareas y recordatorios**. El
+documento de cotización y `apps/travel-agent` quedan fuera. Cada uno necesita su
+plan.
+
+### Problema
+
+El módulo `activities` existe y funciona. Nadie lo ve. `apps/travel-app` no
+renderiza una sola actividad. `activities.myTasks` filtra por `createdById`, así
+que "mis tareas" son "las que yo escribí". Una agencia no reparte pendientes.
+
+### Rebanadas
+
+- **5A — datos y API.** Cuatro columnas nuevas en `Activity`: `assignedToId`,
+  `reminderSentAt`, `sourceKey`, con `@@unique([agencyId, sourceKey])`. El router
+  `activities` gana una bandeja de tareas por asignado, `assign`, `updateTask`,
+  `remove` y `completeMany`. Un barrido `/internal/sync/reminders` con la forma
+  de `rates.controller.ts`: falla cerrado sin `TRAVEL_CRON_SECRET`. Tres
+  disparadores: tarea vencida (correo, sin fila), pago vencido y salida próxima
+  (crean filas `TASK` idempotentes por `sourceKey`). Correo por Resend opcional
+  con `TRAVEL_REMINDER_FROM`; falla abierto.
+- **5B — la app.** El timeline de `apps/app/components/crm/timeline/` portado a
+  `components/travel/timeline/`, sin las ramas de correo ni de calendario. Una
+  pestaña Timeline en las fichas de cliente, cotización y reserva. La bandeja
+  `app/(app)/[agency]/tasks/` con la plantilla de cinco archivos de
+  `commissions/`. Una tarjeta "My tasks" en el tablero.
+
+### Decisiones fijadas
+
+- **`assignedToId` es columna, no `meta`.** Un filtro y un índice la necesitan.
+- **El asignado por defecto es el autor.** La migración copia `createdById` a las
+  filas `TASK` existentes.
+- **`agent` ve solo lo asignado a él.** Mismo idioma que comisiones:
+  `canSeeMargins` separa "ve todo" de "ve lo suyo". Sin predicado nuevo.
+- **El barrido escribe filas `Activity`, no un modelo nuevo.** La idempotencia es
+  la restricción única, no un `SELECT` previo.
+- **Endpoint falla cerrado. Correo falla abierto.** Frontera de autorización
+  contra canal lateral.
+
+### Cierra pendientes de fases anteriores
+
+- `apps/travel-api/vercel.json` declara 5 crons; solo `rates` existe. 5A agrega
+  `reminders` y quita los 4 muertos.
+- `status.md` afirmaba que `record-stack.ts` tiene `timelineTabParser`. No lo
+  tiene. 5B lo agrega.
+
+### Riesgos abiertos de la Fase 5
+
+- El barrido no toma un lease. Dos instancias en paralelo mandan el correo dos
+  veces. Las filas no se duplican por la restricción única.
+- El barrido recorre todas las agencias en una petición. `maxAgenciesPerRun` la
+  acota; un cursor entre corridas queda pendiente.
+- Sin recordatorio de documento por vencer. El modelo `Document` no tiene fecha
+  de expiración.
 
 ---
 
@@ -762,6 +949,12 @@ Pegar la URL de un expediente ajeno debe redirigir, no mostrar nada.
    nuevo. `CRM_SKIP_HOOKS=1` lo salta.
 7. NOT DONE — Facturación fiscal (CFDI). Integración con GDS, mayoristas y
    pasarelas de pago.
+8. BROKEN — `apps/travel-api/vercel.json` declara 5 crons. Solo
+   `/internal/sync/rates` existe. Los otros 4 responden 404. Es una copia sin
+   revisar de `apps/api/vercel.json`. La Fase 5A lo corrige.
+9. BROKEN — `docs/travel/plan_05.md` es un duplicado de `docs/travel/plan_04.md`.
+   Los dos se titulan "Fase 4 — Comisiones al asesor". Solo `plan_04.md` se
+   cita. Borrar `plan_05.md` o renombrar la serie.
 
 ---
 

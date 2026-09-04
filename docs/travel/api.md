@@ -39,8 +39,23 @@ log headers, query strings or bodies.
 ## Roles
 
 `owner`, `admin`, `agent`, `accountant`. Predicates (`canManageAgency`,
-`canSeeMargins`, `canRecordPayment`) live in `@travel/auth` and gate the service
-**and** the UI control, so the button and the 403 never disagree.
+`canSeeMargins`, `canRecordPayment`, `canManageCommission`) live in `@travel/auth`
+and gate the service **and** the UI control, so the button and the 403 never
+disagree.
+
+## `commissions` router
+
+`Commission` is the advisor's cut of one booking (`docs/travel/money.md`).
+`list` / `byBooking` read; `create`, `update`, `approve`, `pay`, `void`,
+`remove`, `recalculate`, `bulk-approve`, `bulk-pay` write and are gated by
+`canManageCommission`. `reports/advisors` and `reports/suppliers` aggregate in
+base currency; `reports/suppliers` needs `canSeeMargins`. An `agent` sees only
+their own rows in `list` and `byAdvisor` — the service sets the `userId` filter,
+it is never an input. `agencyId` is never an input either.
+
+`agency.profile` and `agency.updateProfile` carry `defaultCommissionBasis` and
+`defaultCommissionRate` — the defaults a new commission form starts from, not a
+rule that runs on its own. `updateProfile` still gates on `canManageAgency`.
 
 ## Cookie prefix
 
@@ -79,10 +94,16 @@ app/(app)/[agency]/
   page.tsx                 dashboard — dashboard.summary({ scope })
   customers/ travelers/ suppliers/ quotes/ bookings/   list + record sheet
   payments/                charges and payables on one screen
+  commissions/             list + bulk approve/pay; reports/ has by advisor / by supplier
   settings/
     (General)              agency.profile / updateProfile — tax data, timezone, logo
     members/               members, setRole, removeMember, invitations, invite
     currencies/            currency.settings + setBaseCurrency / rate mutations
+    commissions/           updateProfile with defaultCommissionBasis / defaultCommissionRate
     fields/                fields.* for the five entities, entity in ?entity
     folios/                updateProfile with quotePrefix / bookingPrefix
 ```
+
+The commissions list has no record sheet — a row opens the parent booking's
+sheet on its Commissions tab. The same `CommissionsPanel` is that tab and the
+list's not — it is booking-scoped through a required `bookingId` prop.
