@@ -44,7 +44,7 @@ export class BookingsRouter {
 		@Ctx() ctx: AgencyTrpcContext,
 		@Input() input: z.infer<typeof bookingListInput>,
 	) {
-		return this.bookings.list(ctx.agencyId, input);
+		return this.bookings.list(ctx.agencyId, ctx.role, input);
 	}
 
 	@Query({
@@ -53,7 +53,7 @@ export class BookingsRouter {
 		meta: restMeta("GET", "/bookings/{id}", ["Bookings"]),
 	})
 	async byId(@Ctx() ctx: AgencyTrpcContext, @Input("id") id: string) {
-		return this.bookings.byId(ctx.agencyId, id);
+		return this.bookings.byId(ctx.agencyId, ctx.role, id);
 	}
 
 	@Mutation({
@@ -89,7 +89,12 @@ export class BookingsRouter {
 		@Ctx() ctx: AgencyTrpcContext,
 		@Input() input: z.infer<typeof setBookingItemsInput>,
 	) {
-		return this.bookings.setItems(ctx.agencyId, input.id, input.items);
+		return this.bookings.setItems(
+			ctx.agencyId,
+			ctx.role,
+			input.id,
+			input.items,
+		);
 	}
 
 	@Mutation({
@@ -101,7 +106,12 @@ export class BookingsRouter {
 		@Ctx() ctx: AgencyTrpcContext,
 		@Input() input: z.infer<typeof setBookingTravelersInput>,
 	) {
-		return this.bookings.setTravelers(ctx.agencyId, input.id, input.travelers);
+		return this.bookings.setTravelers(
+			ctx.agencyId,
+			ctx.role,
+			input.id,
+			input.travelers,
+		);
 	}
 
 	@Mutation({

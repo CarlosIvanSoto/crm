@@ -77,10 +77,10 @@ describe("agency isolation", () => {
 			travelEndDate: null,
 		});
 
-		const read = bookings.byId(a.agencyId, booking.id);
+		const read = bookings.byId(a.agencyId, "owner", booking.id);
 		await expect(read).rejects.toBeInstanceOf(NotFoundException);
 
-		const own = await bookings.byId(b.agencyId, booking.id);
+		const own = await bookings.byId(b.agencyId, "owner", booking.id);
 		expect(own.id).toBe(booking.id);
 	});
 });

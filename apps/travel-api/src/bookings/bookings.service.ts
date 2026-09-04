@@ -4,6 +4,7 @@ import {
 	Logger,
 	NotFoundException,
 } from "@nestjs/common";
+import { type AgencyRole, canSeeMargins } from "@travel/auth";
 import {
 	agencyDb,
 	COUNTER_KIND,
@@ -81,9 +82,11 @@ export class BookingsService {
 
 	async list(
 		agencyId: string,
+		role: AgencyRole,
 		input: BookingListInput,
 	): Promise<ListResult<BookingRow>> {
 		const scoped = agencyDb(this.db, agencyId);
+		const seeMargins = canSeeMargins(role);
 		const where = this.buildWhere(input);
 		const { skip, take } = paginate(input);
 
@@ -128,9 +131,10 @@ export class BookingsService {
 					destination: row.destination,
 					currency: row.currency,
 					travelStartDate: row.travelStartDate?.toISOString() ?? null,
-					sellTotalBase: sell,
-					costTotalBase: cost,
-					marginBase: sell !== null && cost !== null ? sell - cost : null,
+					sellTotalBase: seeMargins ? sell : null,
+					costTotalBase: seeMargins ? cost : null,
+					marginBase:
+						seeMargins && sell !== null && cost !== null ? sell - cost : null,
 					baseCurrency: row.baseCurrency,
 					itemCount: row._count.items,
 					travelerCount: row._count.travelers,
@@ -144,8 +148,9 @@ export class BookingsService {
 		};
 	}
 
-	async byId(agencyId: string, id: string) {
+	async byId(agencyId: string, role: AgencyRole, id: string) {
 		const scoped = agencyDb(this.db, agencyId);
+		const seeMargins = canSeeMargins(role);
 		const booking = await scoped.booking.findFirst({
 			where: { id },
 			select: {
@@ -231,9 +236,10 @@ export class BookingsService {
 			currency: booking.currency,
 			travelStartDate: booking.travelStartDate?.toISOString() ?? null,
 			travelEndDate: booking.travelEndDate?.toISOString() ?? null,
-			sellTotalBase: sell,
-			costTotalBase: cost,
-			marginBase: sell !== null && cost !== null ? sell - cost : null,
+			sellTotalBase: seeMargins ? sell : null,
+			costTotalBase: seeMargins ? cost : null,
+			marginBase:
+				seeMargins && sell !== null && cost !== null ? sell - cost : null,
 			baseCurrency: booking.baseCurrency,
 			itemCount: booking.items.length,
 			travelerCount: booking.travelers.length,
@@ -385,7 +391,12 @@ export class BookingsService {
 		}
 	}
 
-	async setItems(agencyId: string, id: string, items: ItineraryItemInput[]) {
+	async setItems(
+		agencyId: string,
+		role: AgencyRole,
+		id: string,
+		items: ItineraryItemInput[],
+	) {
 		const scoped = agencyDb(this.db, agencyId);
 		const booking = await scoped.booking.findFirst({
 			where: { id },
@@ -437,10 +448,15 @@ export class BookingsService {
 			items: built.length,
 		});
 
-		return this.byId(agencyId, id);
+		return this.byId(agencyId, role, id);
 	}
 
-	async setTravelers(agencyId: string, id: string, travelers: TravelerInput[]) {
+	async setTravelers(
+		agencyId: string,
+		role: AgencyRole,
+		id: string,
+		travelers: TravelerInput[],
+	) {
 		const scoped = agencyDb(this.db, agencyId);
 		const booking = await scoped.booking.findFirst({
 			where: { id },
@@ -503,7 +519,7 @@ export class BookingsService {
 			travelers: travelers.length,
 		});
 
-		return this.byId(agencyId, id);
+		return this.byId(agencyId, role, id);
 	}
 
 	async archive(agencyId: string, id: string) {

@@ -1,6 +1,13 @@
+import { CommissionBasis } from "@travel/db/enums";
 import { z } from "zod";
 
 const agencyRole = z.enum(["owner", "admin", "agent", "accountant"]);
+
+const commissionBasis = z.enum(
+	Object.values(CommissionBasis) as [CommissionBasis, ...CommissionBasis[]],
+);
+
+const commissionRate = z.number().min(0).max(1);
 
 export const agencyProfileOutput = z.object({
 	id: z.string(),
@@ -17,6 +24,8 @@ export const agencyProfileOutput = z.object({
 	quotePrefix: z.string(),
 	bookingPrefix: z.string(),
 	defaultTerms: z.string().nullable(),
+	defaultCommissionBasis: commissionBasis.nullable(),
+	defaultCommissionRate: z.number().nullable(),
 	viewerRole: agencyRole,
 	canManage: z.boolean(),
 });
@@ -33,6 +42,8 @@ export const updateAgencyProfileInput = z.object({
 	quotePrefix: z.string().trim().min(1).max(8).optional(),
 	bookingPrefix: z.string().trim().min(1).max(8).optional(),
 	defaultTerms: z.string().trim().max(4000).nullable().optional(),
+	defaultCommissionBasis: commissionBasis.nullable().optional(),
+	defaultCommissionRate: commissionRate.nullable().optional(),
 });
 
 export const agencyMemberOutput = z.object({
