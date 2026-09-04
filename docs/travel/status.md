@@ -3,6 +3,8 @@
 Fecha de corte: 2026-09-04. Plan aprobado: `docs/travel/plan_01.md`. La Fase 2
 se corta en dos rebanadas: `docs/travel/plan_02.md` es la Fase 2A.
 
+Actualizado el mismo día para cerrar la Fase 7 (documentos).
+
 Este archivo dice qué está hecho, qué falta y en qué orden seguir. Las reglas de
 cada área están en `docs/travel/domain.md`, `docs/travel/money.md` y
 `docs/travel/api.md`.
@@ -22,9 +24,13 @@ cada área están en `docs/travel/domain.md`, `docs/travel/money.md` y
 | 3C | Tablero (módulo `dashboard` en la API) y ajustes | HECHO |
 | 4A | Comisiones — modelo `Commission`, módulo API, gating de margen | HECHO |
 | 4B | Comisiones en la app | HECHO |
-| 5A | Tareas y recordatorios — `Activity.assignedToId`, bandeja en el router `activities`, barrido con cron | PENDIENTE |
-| 5B | Timeline en las fichas, bandeja de tareas y tarjeta del tablero en la app | PENDIENTE |
-| — | Documento de cotización, `apps/travel-agent` | FUERA DE ALCANCE. Cada una necesita su plan |
+| 5A | Tareas y recordatorios — `Activity.assignedToId`, bandeja en el router `activities`, barrido con cron | HECHO |
+| 5B | Timeline en las fichas, bandeja de tareas y tarjeta del tablero en la app | HECHO |
+| 6A | Documento de cotización — modelo `QuoteShare`, routers `quoteShare`/`publicQuote` | HECHO |
+| 6B | Documento de cotización en la app — página pública, pestaña Share, impresión | HECHO |
+| 7A | Documentos — `Document.pathname`, módulo `documents`, recordatorio de vencimiento | HECHO |
+| 7B | Documentos en la app — pestaña en reserva/pasajero, página `/documents` | HECHO |
+| — | `apps/travel-agent` | FUERA DE ALCANCE. Necesita su propio plan |
 
 El plan de la Fase 3 es `docs/travel/plan_03.md`. Se corta en tres rebanadas.
 
@@ -32,7 +38,15 @@ El plan de la Fase 4 es `docs/travel/plan_04.md`. Cubre **solo comisiones**. Se
 corta en dos rebanadas: 4A datos y API (HECHO), 4B la app (HECHO).
 
 El plan de la Fase 5 es `docs/travel/plan_07.md`. Cubre **solo tareas y
-recordatorios**. Se corta en dos rebanadas: 5A datos y API, 5B la app.
+recordatorios**. Se corta en dos rebanadas: 5A datos y API (HECHO), 5B la app
+(HECHO).
+
+El plan de la Fase 6 es `docs/travel/plan_08.md`. Cubre **solo el documento de
+cotización**. Se corta en dos rebanadas: 6A datos y API, 6B la app.
+
+El plan de la Fase 7 es `docs/travel/plan_09.md`. Cubre **solo documentos**
+(vouchers, boletos, facturas, identificación). Se corta en dos rebanadas: 7A
+datos y API (HECHO), 7B la app (HECHO).
 
 ---
 
@@ -616,8 +630,9 @@ app/(app)/[agency]/
 - **`settings/fields`** usa `@travel/db/fields-shape` (módulo hoja, sin Prisma) en
   el cliente, nunca `@travel/db/fields`. Selector de entidad en la URL (`?entity`),
   reordenar con `SortableList`, editor en un `Sheet`.
-- **`record-stack.ts`** no tiene `timelineTabParser`. `SEARCH_PARAM` de viajes
-  no tiene la llave `timeline`. La Fase 5B la agrega.
+- **`record-stack.ts`** no tenía `timelineTabParser`. `SEARCH_PARAM` de viajes no
+  tenía la llave `timeline`. La Fase 5B agrega la llave `record.timeline` y la
+  limpia en `write()`.
 
 ### Verificado
 
@@ -824,52 +839,147 @@ components/travel/commissions/
 
 ---
 
-## Fase 5 — PENDIENTE — tareas y recordatorios
+## Fase 5A — HECHO — datos y API de tareas y recordatorios
 
-Plan: `docs/travel/plan_07.md`. Alcance: **solo tareas y recordatorios**. El
-documento de cotización y `apps/travel-agent` quedan fuera. Cada uno necesita su
-plan.
+Plan: `docs/travel/plan_07.md`, rebanada 5A. Alcance: **solo tareas y
+recordatorios**. El documento de cotización y `apps/travel-agent` quedan fuera.
+Cada uno necesita su plan.
 
 ### Problema
 
-El módulo `activities` existe y funciona. Nadie lo ve. `apps/travel-app` no
-renderiza una sola actividad. `activities.myTasks` filtra por `createdById`, así
-que "mis tareas" son "las que yo escribí". Una agencia no reparte pendientes.
+El módulo `activities` existía y funcionaba. Nadie lo veía. `activities.myTasks`
+filtraba por `createdById`, así que "mis tareas" eran "las que yo escribí". Una
+agencia con cuatro asesores no repartía pendientes.
 
-### Rebanadas
+### Archivos
 
-- **5A — datos y API.** Cuatro columnas nuevas en `Activity`: `assignedToId`,
-  `reminderSentAt`, `sourceKey`, con `@@unique([agencyId, sourceKey])`. El router
-  `activities` gana una bandeja de tareas por asignado, `assign`, `updateTask`,
-  `remove` y `completeMany`. Un barrido `/internal/sync/reminders` con la forma
-  de `rates.controller.ts`: falla cerrado sin `TRAVEL_CRON_SECRET`. Tres
-  disparadores: tarea vencida (correo, sin fila), pago vencido y salida próxima
-  (crean filas `TASK` idempotentes por `sourceKey`). Correo por Resend opcional
-  con `TRAVEL_REMINDER_FROM`; falla abierto.
-- **5B — la app.** El timeline de `apps/app/components/crm/timeline/` portado a
-  `components/travel/timeline/`, sin las ramas de correo ni de calendario. Una
-  pestaña Timeline en las fichas de cliente, cotización y reserva. La bandeja
-  `app/(app)/[agency]/tasks/` con la plantilla de cinco archivos de
-  `commissions/`. Una tarjeta "My tasks" en el tablero.
+```
+packages/travel-db/prisma/schema.prisma            + assignedToId, reminderSentAt, sourceKey; @@unique([agencyId, sourceKey]); índices nuevos
+packages/travel-db/prisma/migrations/20260904120000_activity_assignee_and_reminders/
+                                                   ALTER TABLE + UPDATE de respaldo (createdById → assignedToId en TASK)
+packages/travel-db/prisma/seed.ts                  + dos tareas por agencia, una vencida y una futura, asignadas al owner
 
-### Decisiones fijadas
+apps/travel-api/src/activities/activities.contracts.ts   + taskListInput/Output, assignInput, updateTaskInput, removeInput, completeManyInput; activityEntryOutput gana assignedTo, reminderSentAt, sourceKey
+apps/travel-api/src/activities/activities.service.ts     myTasks → tasks(agencyId, role, viewerId, input); + assign, updateTask, remove, completeMany; complete gana guarda
+apps/travel-api/src/activities/activities.router.ts      myTasks → tasks (POST /activities/tasks/search); + assign, updateTask, remove, completeMany
+apps/travel-api/src/activities/reminders-config.ts       REMINDERS as const
+apps/travel-api/src/activities/reminders.service.ts      sweepAllAgencies(): tarea vencida, pago vencido, salida próxima
+apps/travel-api/src/activities/reminders.controller.ts   GET|POST /internal/sync/reminders, copia rates.controller.ts
+apps/travel-api/src/activities/reminder-mailer.ts        sendReminderEmail(): Resend opcional, falla abierto
+apps/travel-api/src/activities/activities.module.ts      + RemindersController, + RemindersService
+apps/travel-api/src/dashboard/dashboard.service.ts       + tasks: { open, overdue }; scope "me" filtra por assignedToId
+apps/travel-api/src/dashboard/dashboard.contracts.ts     + tasks en la salida
+apps/travel-api/src/config/env.validation.ts             + TRAVEL_REMINDER_FROM
+apps/travel-api/vercel.json                              + reminders (0 8 * * *); quita los 4 crons muertos
+apps/travel-api/test/activities.spec.ts                  nuevo — alcance por rol, asignación, ventanas, guarda de complete
+apps/travel-api/test/reminders.spec.ts                   nuevo — aislamiento por agencia, idempotencia, 503/403, sin Resend, ventana de re-aviso
+.env.example, turbo.json, apps/travel-api/turbo.json     + TRAVEL_REMINDER_FROM
+```
+
+### Decisiones
 
 - **`assignedToId` es columna, no `meta`.** Un filtro y un índice la necesitan.
 - **El asignado por defecto es el autor.** La migración copia `createdById` a las
-  filas `TASK` existentes.
-- **`agent` ve solo lo asignado a él.** Mismo idioma que comisiones:
-  `canSeeMargins` separa "ve todo" de "ve lo suyo". Sin predicado nuevo.
+  filas `TASK` existentes con un `UPDATE` a mano.
+- **`agent` ve solo lo asignado a él.** `canSeeMargins` separa "ve todo" de "ve
+  lo suyo", lo pone el servicio, nunca es input. Sin predicado nuevo.
+- **`complete`, `assign`, `updateTask`, `remove`** exigen el asignado o
+  `canSeeMargins`. Antes cualquier miembro cerraba cualquier tarea.
+- **La colisión de `upcoming` se parte.** El timeline conserva `upcoming` = tarea
+  abierta. La bandeja usa `window: overdue | today | week | all` derivado de
+  `dueAt`. Dos vistas, dos vocabularios.
 - **El barrido escribe filas `Activity`, no un modelo nuevo.** La idempotencia es
-  la restricción única, no un `SELECT` previo.
-- **Endpoint falla cerrado. Correo falla abierto.** Frontera de autorización
-  contra canal lateral.
+  `@@unique([agencyId, sourceKey])` + `createMany({ skipDuplicates: true })`, no
+  un `SELECT` previo. Una tarea humana tiene `sourceKey` nulo y no choca.
+- **El endpoint falla cerrado. El correo falla abierto.** Sin `TRAVEL_CRON_SECRET`
+  el barrido responde 503. Sin `TRAVEL_RESEND_API_KEY`/`TRAVEL_REMINDER_FROM`
+  escribe y estampa, y no manda correo.
+- **La migración se hizo con `prisma migrate diff` + `migrate deploy`**, no con
+  `migrate dev` (no corre sin TTY). `travel:auth:generate` no se corrió.
 
-### Cierra pendientes de fases anteriores
+### Verificado
 
-- `apps/travel-api/vercel.json` declara 5 crons; solo `rates` existe. 5A agrega
-  `reminders` y quita los 4 muertos.
-- `status.md` afirmaba que `record-stack.ts` tiene `timelineTabParser`. No lo
-  tiene. 5B lo agrega.
+- `bun run check-types` — 22/22.
+- `bun run lint` — pasa (warnings de barrel preexistentes).
+- `bun run lint:slop` — pasa.
+- `bun run --filter=travel-api test` — 203 casos (186 + 17 nuevos).
+- `curl -X POST /internal/sync/reminders` sin auth → 403; con auth correcto →
+  `{ agencies, reminded, created, ... }`; segunda corrida → `reminded: 0`.
+- Swagger muestra `/internal/sync/reminders` en el documento OpenAPI.
+
+### Pendiente de 5A
+
+- La base `travel` local no se resembró: `prisma db seed` no es idempotente y
+  `migrate reset` necesita consentimiento. La migración sí está aplicada en
+  `travel` y en `travel_test`. Las dos tareas de semilla se insertaron a mano en
+  la base local para el recorrido de 5B.
+- El `curl` sin secreto responde 403, no 503, porque `TRAVEL_CRON_SECRET` ya está
+  en el `.env` local. El caso 503 lo cubre la prueba unitaria del controlador.
+
+## Fase 5B — HECHO — timeline, bandeja de tareas y tarjeta del tablero
+
+Plan: `docs/travel/plan_07.md`, rebanada 5B. Rutas y textos en inglés, como 3A a
+4B.
+
+### Archivos nuevos — `apps/travel-app`
+
+```
+components/travel/timeline/
+  timeline.tsx                 portado de apps/app; ancla { customerId } | { quoteId } | { bookingId }; pestañas all|notes|upcoming|done
+  timeline-entry.tsx           sin ramas de correo/calendario/deal/contact; + nombre del asignado
+  activity-composer.tsx        + selector de asesor cuando el tipo es TASK; tipos NOTE|CALL|TASK
+  activity-icon.tsx            usa la presentación de viajes
+  timeline-search-params.ts    TIMELINE_TABS = all|notes|upcoming|done
+components/travel/activity-presentation.ts    activityLabel/activityIcon sobre el ActivityType de viajes (con SYSTEM)
+lib/use-hydrated.ts            copia de apps/app
+
+app/(app)/[agency]/tasks/
+  page.tsx                     servidor, requireSession + prefetch + HydrateClient
+  tasks-search-params.ts       createListSearchParams({ tabId: "window", facetIds: ["assignedTo"] })
+  tasks-table.tsx              cliente, COLUMNS + useTableQuery; el clic abre la ficha del ancla en pestaña timeline
+  tasks-bulk-actions.tsx       activities.completeMany
+  create-task-sheet.tsx        Sheet por ?new=true; selector de ancla (customer/quote/booking) y de asesor
+```
+
+### Cambios fuera de los archivos nuevos
+
+| Archivo | Cambio |
+| --- | --- |
+| `components/travel/record-sheet/booking-sheet.tsx` | + pestaña `timeline` con `<Timeline anchor={{ bookingId }} />` |
+| `components/travel/record-sheet/quote-sheet.tsx` | + pestaña `timeline` con `<Timeline anchor={{ quoteId }} />` |
+| `components/travel/record-sheet/customer-sheet.tsx` | pasa de `DetailSheetBody` plano a `DetailSheetTabs` con `overview` y `timeline` |
+| `components/travel/record-sheet/record-stack.ts` | + `record.timeline` en `params`, y se limpia en `write()` |
+| `lib/search-param-keys.ts` | + `record.timeline: "timeline"` |
+| `lib/trpc/cache.ts` | `activityKeys()`: `myTasks` → `tasks`; `activity()` invalida `dashboard.summary` |
+| `components/app-icon-rail.tsx` | + `{ title: "Tasks", href: "/tasks", icon: Task }` entre Commissions y Settings |
+| `proxy.ts` | + `/tasks` en `SECTIONS` |
+| `components/travel/status-labels.ts` | + `TASK_WINDOWS` y `taskWindowLabel` |
+| `app/(app)/[agency]/dashboard-summary.tsx` | + tarjeta "My tasks" con `open` y `overdue` de `dashboard.summary().tasks` |
+
+### Decisiones de 5B
+
+- **La tarea no es un `RecordKind`.** La tabla no abre ficha propia. El clic abre
+  la ficha del ancla (`openRecord({ kind, id })` + `setTab("timeline")`), como la
+  tabla de comisiones abre la reserva.
+- **El timeline no enlaza.** Se quita `RecordLink` al portar; una entrada del
+  timeline no navega a nada.
+- **`window` es `tabId`, no faceta.** `createListSearchParams` da un parámetro
+  escalar con default `"all"`; `assignedTo` sí es faceta.
+- **Sin correo ni calendario.** El modelo de viajes no tiene `emailThread` ni
+  `calendarEvent`, así que `email-thread-entry.tsx` y `meeting-entry.tsx` no se
+  portan y el composer no ofrece EMAIL ni MEETING.
+
+### Verificado
+
+- `bun run check-types` — 22/22 (`next typegen` para la ruta `/tasks` nueva).
+- `bun run lint` — pasa. `bun run lint:slop` — pasa.
+- `bun run --filter=travel-api test` — 203 casos.
+
+### Pendiente de 5B
+
+- El `next dev` real no se ejecutó. `check-types`, `lint`, `lint:slop` y las
+  pruebas de la API sí.
+- Recorrido manual con dos cuentas en dos agencias, según `plan_07.md`.
 
 ### Riesgos abiertos de la Fase 5
 
@@ -877,8 +987,330 @@ que "mis tareas" son "las que yo escribí". Una agencia no reparte pendientes.
   veces. Las filas no se duplican por la restricción única.
 - El barrido recorre todas las agencias en una petición. `maxAgenciesPerRun` la
   acota; un cursor entre corridas queda pendiente.
-- Sin recordatorio de documento por vencer. El modelo `Document` no tiene fecha
-  de expiración.
+- RESUELTO — Sin recordatorio de documento por vencer. La Fase 7A lo cierra
+  con `Traveler.documentExpiresAt`, que ya tenía índice.
+- "Salida próxima" no re-avisa si la fecha de salida cambia: el `sourceKey` es
+  por reserva.
+- La tabla de tareas muestra "Booking"/"Quote"/"Customer" como ancla, no el
+  folio ni el nombre. `activityEntryOutput` no trae esas etiquetas.
+
+---
+
+## Fase 6A — HECHO — modelo `QuoteShare` y routers `quoteShare`/`publicQuote`
+
+Plan: `docs/travel/plan_08.md`, rebanada 6A. Alcance: **solo el documento de
+cotización**. `apps/travel-agent` queda fuera y necesita su propio plan.
+
+### Problema
+
+El asesor arma una cotización con dos o tres opciones y no tenía cómo
+mostrarla al cliente. La cotización vivía dentro de la app, detrás de la
+sesión. El cliente no la veía, no la imprimía y no la aceptaba.
+
+### Archivos
+
+```
+packages/travel-db/prisma/schema.prisma         modelo QuoteShare, + acceptedOptionId/acceptedByName en Quote
+packages/travel-db/prisma/migrations/20260904150000_quote_share/
+packages/travel-db/src/tenancy.ts               + "QuoteShare" en TENANT_MODELS
+packages/travel-db/prisma/seed.ts               1 QuoteShare por agencia sembrada
+packages/travel-db/test/tenancy.spec.ts         + caso de aislamiento de quoteShare (13 casos)
+packages/travel-auth/README.md                  aviso del generador incluye la relación de QuoteShare
+apps/travel-api/src/quote-share/
+  quote-share.contracts.ts     shareQuoteIdInput (distinto de quotes.contracts.ts's quoteIdInput)
+  quote-share.service.ts       status/create/revoke/send/view/accept, resolve(token) privado
+  quote-share.router.ts        alias "quoteShare" — AuthMiddleware + AgencyMiddleware
+  public-quote.router.ts       alias "publicQuote" — SIN middleware, el único router público del producto
+  quote-mailer.ts              TRAVEL_RESEND_API_KEY + TRAVEL_QUOTE_FROM, opcional, nunca lanza
+  quote-share.module.ts
+apps/travel-api/src/app.module.ts               + QuoteShareModule
+apps/travel-api/src/generated/server.ts         regenerado: 16 routers, 128 procedimientos
+apps/travel-api/src/config/env.validation.ts    + TRAVEL_QUOTE_FROM
+apps/travel-api/test/quote-share.spec.ts        10 casos
+apps/travel-api/test/{helpers,agency-id-inputs}.spec.ts   ajustes
+.env.example, turbo.json, apps/travel-api/turbo.json      + TRAVEL_QUOTE_FROM
+```
+
+### Decisiones
+
+- **`QuoteShare` es un modelo nuevo, no columnas en `Quote`.** El historial de
+  enlaces (revocado, vencido, vuelto a crear) necesita sus propias filas.
+- **El token nunca se guarda.** 32 bytes `base64url`, solo su `sha256` vive en
+  `tokenHash`. `create` y `send` devuelven la URL una sola vez; `status` no
+  puede volver a mostrarla.
+- **`resolve(token)` es la segunda excepción al cliente con alcance**, junto a
+  `ExchangeRate` (`docs/travel/domain.md`). Un llamador anónimo no tiene
+  `agencyId` que pasar a `agencyDb`; la fila resuelta por `tokenHash` es la
+  que lo da, y desde ahí todo vuelve a pasar por `agencyDb(this.db,
+  share.agencyId)`.
+- **`publicQuote` no lleva `@UseMiddlewares`.** Es intencional: el único router
+  del producto sin `AuthMiddleware`/`AgencyMiddleware`. El contrato de salida
+  (`publicQuoteOutput`) es la lista blanca — sin `cost*`, `margin*`, `ownerId`,
+  `customerId` ni `userId` — y la única guarda posible, porque no hay rol que
+  revisar.
+- **Aceptar no crea la reserva.** `accept` fija `status: "ACCEPTED"`,
+  `decidedAt`, `acceptedOptionId`, `acceptedByName`. `quotes.accept` (del
+  asesor) sigue siendo quien crea el `Booking`; su guarda mira `quote.booking`,
+  no `quote.status`, así que las dos rutas no chocan.
+- **`accept` es idempotente sobre la misma opción.** Aceptar dos veces la
+  misma opción devuelve el mismo resultado y no duplica la `Activity`.
+  Aceptar una opción distinta después de `ACCEPTED`, o sobre una cotización
+  vencida, lanza.
+- **`view` cuenta la visita y registra una `Activity` `SYSTEM` solo en la
+  primera vista** (`firstViewAt` pasa de `null` a una fecha una sola vez).
+- **`send` siempre emite un token nuevo.** No existe "reenviar el mismo
+  enlace": el `tokenHash` no es reversible, así que reenviar revoca el share
+  vivo y crea uno.
+
+### Verificado
+
+- `bun run check-types` — 22/22.
+- `bun run lint` — pasa. `bun run lint:slop` — pasa.
+- `bun run --filter=@travel/db test` — 13 casos (12 + 1 de `quoteShare`).
+- `bun run --filter=travel-api test` — 223 casos (213 + 10 de `quote-share.spec.ts`).
+- `curl GET /rest/public/quotes/{token}` — expone `publicQuote.view` en el
+  puente REST sin cookie de sesión.
+
+### Pendiente de 6A
+
+- La base `travel` local no se resembró desde 5A; la migración sí está
+  aplicada en `travel` y en `travel_test`.
+- Sin límite de peticiones en `publicQuote`. Ver riesgos abiertos abajo.
+
+---
+
+## Fase 6B — HECHO — documento de cotización en `apps/travel-app`
+
+Plan: `docs/travel/plan_08.md`, rebanada 6B. Rutas y textos en inglés, como
+3A a 5B.
+
+### Archivos nuevos — `apps/travel-app`
+
+```
+app/(public)/q/[token]/
+  layout.tsx            importa @crm/ui/print.css. Sin header, sin rail, sin sesión
+  page.tsx               servidor, instant=false, prefetch + hydrate de publicQuote.view, notFound() si falla
+  quote-document.tsx      "use client", useQuery sobre la cache hidratada
+  option-card.tsx          presentacional (sin hooks, sin "use client" propio)
+  itinerary-lines.tsx      presentacional, lee details con readItineraryDetails
+  accept-panel.tsx         "use client", elegir opción + nombre, publicQuote.accept
+  print-button.tsx         "use client", window.print()
+
+components/travel/quotes/share-panel.tsx   pestaña Share: status/create/revoke/send
+```
+
+### Cambios fuera de los archivos nuevos
+
+| Archivo | Cambio |
+| --- | --- |
+| `packages/ui/src/styles/print.css` | nuevo — `@page`, `[data-print="hide"]`, tokens de tema claro forzados en impresión |
+| `packages/ui/package.json` | `+ "./print.css"` en `exports` |
+| `apps/travel-app/proxy.ts` | `+ "/q"` en `PUBLIC` |
+| `apps/travel-app/lib/trpc/cache.ts` | `quote(id)` invalida `quoteShare.status` |
+| `apps/travel-app/components/travel/record-sheet/quote-sheet.tsx` | + pestaña `share` con `<SharePanel quoteId={quoteId} />`, entre `options` y `timeline` |
+
+### Decisiones de 6B
+
+- **La página pública sigue el patrón de fichas ya establecido**, no el de
+  "props planas" del plan original: `page.tsx` hace `fetchQuery` + `notFound()`
+  en un `try/catch` (como `[agency]/layout.tsx`'s `loadAgency`) y entrega la
+  cache hidratada; `quote-document.tsx` la lee con `useQuery`, igual que
+  `quote-sheet.tsx` lee `quotes.byId`.
+- **`export const instant = false`** en `page.tsx` es obligatorio en esta
+  versión de Next: sin él, el build rechaza la ruta porque `params` y
+  `fetchQuery` corren fuera de un límite `<Suspense>` en una ruta que de otro
+  modo intenta prerenderizarse.
+- **El panel de "Send to customer" no precarga el correo del cliente.**
+  `quotes.byId` no lo expone a la ficha. El campo queda vacío con un
+  placeholder; el servicio cae a `customer.email` cuando `to` es `null`.
+- **El botón de imprimir usa `window.print()`, no una librería de PDF.** Cero
+  dependencias nuevas, cero binario en la función serverless. El archivo que
+  el cliente guarda depende de su propio navegador.
+
+### Verificado
+
+- `bun run check-types` — 22/22 (`next typegen` para la ruta `/q/[token]` nueva).
+- `bun run lint` — pasa. `bun run lint:slop` — pasa.
+- `bun run --filter=travel-app build` — pasa. La ruta `/q/[token]` prerenderiza
+  parcialmente. Sin `Module not found: dns`. Frontera cliente/servidor limpia.
+- `bun run --filter=travel-api test` — 223 casos, sin cambios (6B no toca la
+  API).
+
+### Pendiente de 6B
+
+- El `next dev` real no se ejecutó. `build`, `check-types`, `lint` y
+  `lint:slop` sí.
+- Recorrido manual con dos cuentas en dos agencias, según `plan_08.md`.
+
+### Riesgos abiertos de la Fase 6
+
+- El router `publicQuote` no tiene límite de peticiones. El token de 32 bytes
+  hace la prueba en serie inviable, pero un límite por IP en el proxy queda
+  pendiente.
+- `view` incrementa `viewCount` en cada carga anónima, incluida la de un
+  robot. `robots: noindex` reduce el caso, no lo cierra.
+- El cliente no puede rechazar la cotización desde el enlace, solo aceptar.
+- Sin PDF de servidor: el archivo sale de la impresión del navegador del
+  cliente.
+- RESUELTO — El modelo `Document` sin módulo. La Fase 7 lo cierra.
+
+---
+
+## Fase 7A — HECHO — modelo `Document.pathname` y módulo `documents`
+
+Plan: `docs/travel/plan_09.md`, rebanada 7A. Alcance: **solo documentos**.
+`apps/travel-agent` sigue fuera y necesita su propio plan.
+
+### Problema
+
+El modelo `Document` existía desde la Fase 1 y nunca tuvo módulo. Subir un
+voucher, un boleto o un pasaporte no existía.
+
+### Archivos
+
+```
+packages/travel-db/prisma/schema.prisma            + Document.pathname, + Document.updatedAt,
+                                                     @@unique([agencyId, pathname])
+packages/travel-db/prisma/migrations/20260904164349_document_pathname/
+packages/travel-db/test/tenancy.spec.ts             + caso de aislamiento de document (14 casos)
+apps/travel-api/src/documents/
+  documents-config.ts       DOCUMENTS.upload.{maxBytes,tokenTtlMs,allowedContentTypes}, .download.urlTtlMs
+  document-storage.ts       storageEnabled, createUploadToken, signedDownloadUrl, removeObject
+  documents.contracts.ts    uploadTokenInput/Output, createDocumentInput, documentListInput,
+                             documentEntryOutput (sin pathname ni url), downloadUrlOutput
+  documents.service.ts      storage/uploadToken/create/list/downloadUrl/update/remove/removeMany
+  documents.router.ts       alias "documents"
+  documents.module.ts
+apps/travel-api/src/app.module.ts                   + DocumentsModule
+apps/travel-api/src/generated/server.ts             regenerado: 17 routers, 136 procedimientos
+apps/travel-api/src/bookings/{bookings.contracts,bookings.service}.ts   + documentCount
+apps/travel-api/src/travelers/{travelers.contracts,travelers.service}.ts + documentCount
+apps/travel-api/src/activities/reminders-config.ts  + travelDocument: { windowDays: 30 }
+apps/travel-api/src/activities/reminders.service.ts + createTravelDocumentTasks, cuarto paso del barrido
+apps/travel-api/test/documents.spec.ts               nuevo — 12 casos
+apps/travel-api/test/reminders.spec.ts                + 2 casos de vencimiento de documento
+apps/travel-api/test/{helpers,agency-id-inputs}.spec.ts   ajustes
+```
+
+### Decisiones
+
+- **Blobs privados.** `access: "private"` de punta a punta. La API acuña un
+  token de subida acotado a un `pathname` (`generateClientTokenFromReadWriteToken`);
+  el navegador sube directo. La lectura pasa por `issueSignedToken` +
+  `presignUrl`, una URL de 5 minutos por petición.
+- **`Document.pathname` con `@@unique([agencyId, pathname])`.** El prefijo
+  `agencies/<agencyId>/…` es la segunda barrera: un token acuñado para una
+  agencia no firma la ruta de otra, y `create` verifica el prefijo antes de
+  escribir.
+- **Sin token de blob, la capacidad se retira, no hay excepción global.**
+  `uploadToken` responde 503; `list`, `byId` y `remove` siguen funcionando.
+- **Borrado duro.** `del(pathname)` primero, la fila después. Un fallo al
+  borrar del almacén se registra y no bloquea el borrado de la fila.
+- **Cualquier miembro sube.** Un `agent` lee solo lo anclado a sus reservas y
+  a los pasajeros de esas reservas — el mismo `OR` de alcance de `activities`
+  y `commissions`, puesto por el servicio. Borrar exige el que subió o
+  `canSeeMargins`; renombrar no, cualquiera que vea la fila puede.
+- **El recordatorio de vencimiento usa `Traveler.documentExpiresAt`,** que ya
+  existía con índice. `Document` no gana fecha de vencimiento. `sourceKey`
+  lleva la fecha de vencimiento para que un pasaporte renovado vuelva a
+  avisar — corrige el defecto que `departure:<bookingId>` ya tenía.
+
+### Verificado
+
+- `bun run check-types` — 22/22.
+- `bun run lint` — pasa. `bun run lint:slop` — pasa.
+- `bun run --filter=@travel/db test` — 14 casos.
+- `bun run --filter=travel-api test` — 250 casos (223 + 27 nuevos).
+
+### Pendiente de 7A
+
+- La base `travel` local no se resembró desde 6A; la migración sí está
+  aplicada en `travel` y en `travel_test`.
+- Sin límite de peticiones en `uploadToken`. Un miembro válido acuña tokens
+  sin tope.
+- El almacén no verifica el contenido del archivo, solo tipo declarado y
+  tamaño.
+
+---
+
+## Fase 7B — HECHO — documentos en `apps/travel-app`
+
+Plan: `docs/travel/plan_09.md`, rebanada 7B. Rutas y textos en inglés, como
+3A a 6B.
+
+### Archivos nuevos — `apps/travel-app`
+
+```
+components/travel/documents/
+  document-meta.ts              DocumentAnchor, DOCUMENT_KINDS, documentKindLabel, formatBytes
+  documents-panel.tsx            lista + descargar + renombrar + borrar; pestaña de reserva y pasajero
+  upload-document-dialog.tsx     el flujo de tres pasos, ancla fija
+  document-download.tsx          useDownloadDocument() — fetchQuery + window.open
+
+app/(app)/[agency]/documents/
+  page.tsx  documents-search-params.ts  documents-table.tsx  documents-bulk-actions.tsx
+  upload-document-sheet.tsx      selector de tipo de ancla (booking/traveler) + selector del registro
+```
+
+### Cambios fuera de los archivos nuevos
+
+| Archivo | Cambio |
+| --- | --- |
+| `apps/travel-app/package.json` | `+ @vercel/blob` |
+| `apps/travel-app/components/travel/record-sheet/booking-sheet.tsx` | `+` pestaña `documents` entre `commissions` y `timeline` |
+| `apps/travel-app/components/travel/record-sheet/traveler-sheet.tsx` | pasa de `DetailSheetBody` plano a `DetailSheetTabs` con `overview` y `documents` |
+| `apps/travel-app/lib/trpc/cache.ts` | `+ document(anchor?)`; `booking()` y `traveler()` invalidan `documents.list` |
+| `apps/travel-app/components/app-icon-rail.tsx` | `+ { title: "Documents", href: "/documents", icon: DocumentAttachment }` entre Tasks y Settings |
+| `apps/travel-app/proxy.ts` | `+ "/documents"` en `SECTIONS` |
+
+### Decisiones de 7B
+
+- **`put()`, no `upload()`.** `@vercel/blob/client`'s `upload()` pide su
+  propio token a una ruta `handleUploadUrl`; este producto ya tiene el token
+  acuñado por la API, así que `put()` es la función correcta.
+- **`DocumentsPanel` recibe `viewerId` y `canManageAll`, no un `canUpload`
+  plano.** Subir es para cualquier miembro. Borrar es por fila: el botón se
+  calcula `canManageAll || row.uploadedBy.id === viewerId`, para que el botón
+  y el 403 del servicio nunca disientan.
+- **El documento no es un `RecordKind`.** La tabla no abre ficha propia. El
+  clic abre la ficha del ancla (`openRecord({ kind, id })` +
+  `setTab("documents")`), como comisiones abre la reserva.
+- **Sin columna de acciones en la tabla.** Descargar, renombrar y borrar viven
+  en `DocumentsPanel`, dentro de la ficha.
+- **La columna "On" y el selector "Attach to" muestran "Booking"/"Traveler",
+  no el folio ni el nombre.** `documentEntryOutput` no trae esas etiquetas —
+  el mismo límite ya aceptado en la tabla de tareas.
+- **`upload-document-sheet.tsx` duplica el flujo de tres pasos** de
+  `upload-document-dialog.tsx` en vez de compartirlo — la misma relación que
+  ya tenían `commission-dialogs.tsx` y `create-commission-sheet.tsx`.
+
+### Verificado
+
+- `bun run check-types` — 22/22 (`next typegen` para la ruta `/documents` nueva).
+- `bun run lint` — pasa (warnings de barrel preexistentes: `lib/roles.ts`,
+  `postcss.config.mjs`).
+- `bun run lint:slop` — pasa.
+- `bun run --filter=travel-app build` — pasa. La ruta `/[agency]/documents`
+  prerenderiza. Sin `Module not found: dns`. Frontera cliente/servidor limpia.
+- `bun run --filter=travel-api test` — 250 casos, sin cambios (7B no toca la
+  API).
+
+### Pendiente de 7B
+
+- El `next dev` real no se ejecutó. `build`, `check-types`, `lint` y
+  `lint:slop` sí.
+- Recorrido manual con dos cuentas en dos agencias, según `plan_09.md`.
+
+### Riesgos abiertos de la Fase 7
+
+- Un fallo entre subir el blob y crear la fila deja un blob huérfano. Sin
+  barrido que lo detecte.
+- El almacén no verifica el contenido del archivo, solo tipo declarado y
+  tamaño — un `.exe` renombrado a `.pdf` entra.
+- `medicalNotes`, `dietaryNotes` y `documentNumber` siguen en claro (riesgo 4
+  de la Fase 1). Un pasaporte escaneado ahora vive en el almacén, cifrado en
+  reposo por el proveedor, pero la fila que lo describe no lo está.
+- Sin vista previa en la app — el documento se descarga, no se ve en línea.
 
 ---
 
@@ -952,9 +1384,8 @@ Pegar la URL de un expediente ajeno debe redirigir, no mostrar nada.
 8. BROKEN — `apps/travel-api/vercel.json` declara 5 crons. Solo
    `/internal/sync/rates` existe. Los otros 4 responden 404. Es una copia sin
    revisar de `apps/api/vercel.json`. La Fase 5A lo corrige.
-9. BROKEN — `docs/travel/plan_05.md` es un duplicado de `docs/travel/plan_04.md`.
-   Los dos se titulan "Fase 4 — Comisiones al asesor". Solo `plan_04.md` se
-   cita. Borrar `plan_05.md` o renombrar la serie.
+9. RESUELTO — `docs/travel/plan_05.md` era un duplicado de `docs/travel/plan_04.md`,
+   nunca comiteado. Ya no está en el árbol al cerrar la Fase 6.
 
 ---
 

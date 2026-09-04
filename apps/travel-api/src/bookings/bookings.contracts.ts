@@ -147,6 +147,7 @@ export const bookingDetailOutput = bookingRowOutput.extend({
 	travelEndDate: z.string().nullable(),
 	updatedAt: z.string(),
 	unpricedItems: z.number(),
+	documentCount: z.number(),
 	items: z.array(bookingItemOutput),
 	travelers: z.array(bookingTravelerOutput),
 });

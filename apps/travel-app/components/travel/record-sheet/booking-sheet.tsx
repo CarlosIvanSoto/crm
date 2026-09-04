@@ -38,6 +38,7 @@ import {
 	TravelersEditor,
 } from "@/components/travel/bookings/travelers-editor";
 import { CommissionsPanel } from "@/components/travel/commissions/commissions-panel";
+import { DocumentsPanel } from "@/components/travel/documents/documents-panel";
 import { ItemsEditor } from "@/components/travel/itinerary/items-editor";
 import {
 	draftFromOutput,
@@ -49,7 +50,12 @@ import {
 	BOOKING_STATUSES,
 	bookingStatusLabel,
 } from "@/components/travel/status-labels";
-import { canManageCommission, canRecordPayment } from "@/lib/roles";
+import { Timeline } from "@/components/travel/timeline/timeline";
+import {
+	canManageCommission,
+	canRecordPayment,
+	canSeeMargins,
+} from "@/lib/roles";
 import { useTravelCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
 import type { RouterInputs, RouterOutputs } from "@/lib/trpc/types";
@@ -99,6 +105,7 @@ export function BookingSheet({ bookingId }: { bookingId: string }) {
 
 	const canRecord = canRecordPayment(me.data?.role ?? null);
 	const canManageCommissions = canManageCommission(me.data?.role ?? null);
+	const canManageAllDocuments = canSeeMargins(me.data?.role ?? null);
 
 	const onError = (error: { message: string }) => toast.error(error.message);
 
@@ -324,6 +331,22 @@ export function BookingSheet({ bookingId }: { bookingId: string }) {
 		</DetailSheetBody>
 	);
 
+	const documentsTab = (
+		<DetailSheetBody>
+			<DetailSheetSection>
+				{me.data ? (
+					<DocumentsPanel
+						anchor={{ bookingId }}
+						viewerId={me.data.id}
+						canManageAll={canManageAllDocuments}
+					/>
+				) : null}
+			</DetailSheetSection>
+		</DetailSheetBody>
+	);
+
+	const timelineTab = <Timeline anchor={{ bookingId }} />;
+
 	return (
 		<>
 			<DetailSheetHeader
@@ -414,6 +437,18 @@ export function BookingSheet({ bookingId }: { bookingId: string }) {
 						value: "commissions",
 						label: "Commissions",
 						content: commissionsTab,
+					},
+					{
+						value: "documents",
+						label: "Documents",
+						count: data?.documentCount ?? null,
+						content: documentsTab,
+					},
+					{
+						value: "timeline",
+						label: "Timeline",
+						content: timelineTab,
+						keepMounted: true,
 					},
 				]}
 			/>

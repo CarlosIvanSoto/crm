@@ -38,10 +38,12 @@ import {
 	OptionsEditor,
 	type QuoteOptionDraft,
 } from "@/components/travel/quotes/options-editor";
+import { SharePanel } from "@/components/travel/quotes/share-panel";
 import {
 	QUOTE_STATUSES,
 	quoteStatusLabel,
 } from "@/components/travel/status-labels";
+import { Timeline } from "@/components/travel/timeline/timeline";
 import { useTravelCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
 import type { RouterOutputs } from "@/lib/trpc/types";
@@ -316,6 +318,16 @@ export function QuoteSheet({ quoteId }: { quoteId: string }) {
 		</DetailSheetBody>
 	);
 
+	const shareTab = (
+		<DetailSheetBody>
+			<DetailSheetSection>
+				<SharePanel quoteId={quoteId} />
+			</DetailSheetSection>
+		</DetailSheetBody>
+	);
+
+	const timelineTab = <Timeline anchor={{ quoteId }} />;
+
 	return (
 		<>
 			<DetailSheetHeader
@@ -388,6 +400,18 @@ export function QuoteSheet({ quoteId }: { quoteId: string }) {
 						label: "Options",
 						count: data?.options.length ?? null,
 						content: optionsTab,
+						keepMounted: true,
+					},
+					{
+						value: "share",
+						label: "Share",
+						content: shareTab,
+						keepMounted: true,
+					},
+					{
+						value: "timeline",
+						label: "Timeline",
+						content: timelineTab,
 						keepMounted: true,
 					},
 				]}

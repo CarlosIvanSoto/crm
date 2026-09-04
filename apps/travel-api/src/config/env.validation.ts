@@ -82,6 +82,14 @@ export class EnvironmentVariables {
 
 	@IsOptional()
 	@IsString()
+	TRAVEL_REMINDER_FROM?: string;
+
+	@IsOptional()
+	@IsString()
+	TRAVEL_QUOTE_FROM?: string;
+
+	@IsOptional()
+	@IsString()
 	REDIS_URL?: string;
 
 	@IsOptional()

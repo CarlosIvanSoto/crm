@@ -211,6 +211,7 @@ export class BookingsService {
 						},
 					},
 				},
+				_count: { select: { documents: true } },
 			},
 		});
 
@@ -244,6 +245,7 @@ export class BookingsService {
 			itemCount: booking.items.length,
 			travelerCount: booking.travelers.length,
 			unpricedItems: unpriced,
+			documentCount: booking._count.documents,
 			lastActivityAt: booking.lastActivityAt?.toISOString() ?? null,
 			createdAt: booking.createdAt.toISOString(),
 			updatedAt: booking.updatedAt.toISOString(),

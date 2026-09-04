@@ -32,11 +32,13 @@ model User {
   ownedQuotes      Quote[]    @relation("QuoteOwner")
   ownedBookings    Booking[]  @relation("BookingOwner")
   authoredActivity Activity[] @relation("ActivityAuthor")
+  assignedActivity Activity[] @relation("ActivityAssignee")
   uploadedDocs     Document[] @relation("DocumentUploader")
   fieldValues      FieldValue[] @relation("FieldValueUser")
   savedViews       SavedView[]  @relation("SavedViewOwner")
   earnedCommissions   Commission[] @relation("CommissionEarner")
   authoredCommissions Commission[] @relation("CommissionAuthor")
+  authoredQuoteShares QuoteShare[] @relation("QuoteShareAuthor")
 
   @@unique([email])
   @@map("user")
@@ -122,6 +124,7 @@ model Organization {
   quotes           Quote[]
   quoteOptions     QuoteOption[]
   quoteItems       QuoteItem[]
+  quoteShares      QuoteShare[]
   bookings         Booking[]
   bookingTravelers BookingTraveler[]
   bookingItems     BookingItem[]
@@ -420,6 +423,9 @@ model Quote {
   notes       String?
   terms       String?
 
+  acceptedOptionId String?
+  acceptedByName   String?
+
   sentAt     DateTime?
   decidedAt  DateTime?
   archivedAt DateTime?
@@ -430,6 +436,7 @@ model Quote {
   options    QuoteOption[]
   booking    Booking?
   activities Activity[]
+  shares     QuoteShare[]
 
   @@unique([agencyId, folio])
   @@index([agencyId])
@@ -526,6 +533,32 @@ model QuoteItem {
   @@index([quoteOptionId, position])
   @@index([supplierId])
   @@map("quoteItem")
+}
+
+model QuoteShare {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  tokenHash String @unique
+
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  firstViewAt DateTime?
+  lastViewAt  DateTime?
+  viewCount   Int       @default(0)
+
+  createdById String
+  createdBy   User   @relation("QuoteShareAuthor", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([agencyId])
+  @@index([quoteId])
+  @@map("quoteShare")
 }
 
 enum BookingStatus {
@@ -831,6 +864,7 @@ model Document {
   traveler   Traveler? @relation(fields: [travelerId], references: [id], onDelete: Cascade)
 
   kind        DocumentKind
+  pathname    String
   url         String
   filename    String
   contentType String?
@@ -840,8 +874,12 @@ model Document {
   uploadedBy   User   @relation("DocumentUploader", fields: [uploadedById], references: [id])
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
+  @@unique([agencyId, pathname])
   @@index([agencyId])
+  @@index([agencyId, kind])
+  @@index([agencyId, createdAt])
   @@index([bookingId])
   @@index([travelerId])
   @@map("document")
@@ -880,14 +918,21 @@ model Activity {
   createdBy   User   @relation("ActivityAuthor", fields: [createdById], references: [id])
   meta        Json?
 
+  assignedToId   String?
+  assignedTo     User?     @relation("ActivityAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  reminderSentAt DateTime?
+  sourceKey      String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([agencyId, sourceKey])
   @@index([agencyId, createdAt])
   @@index([customerId, createdAt])
   @@index([quoteId, createdAt])
   @@index([bookingId, createdAt])
-  @@index([dueAt])
+  @@index([agencyId, assignedToId, completedAt, dueAt])
+  @@index([agencyId, dueAt])
   @@index([createdById])
   @@map("activity")
 }

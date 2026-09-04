@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID, scrypt } from "node:crypto";
+import { createHash, randomBytes, randomUUID, scrypt } from "node:crypto";
 import { db } from "../src/client";
 import { COUNTER_KIND, formatFolio } from "../src/folio";
 
@@ -228,6 +228,17 @@ async function seedAgency(
 			},
 		});
 
+		await db.quoteShare.create({
+			data: {
+				agencyId,
+				quoteId: quote.id,
+				tokenHash: createHash("sha256")
+					.update(randomBytes(32).toString("base64url"))
+					.digest("hex"),
+				createdById: ownerId,
+			},
+		});
+
 		if (index === 1) {
 			const booking = await db.booking.create({
 				data: {
@@ -302,6 +313,31 @@ async function seedAgency(
 						currency: "USD",
 						status: "APPROVED",
 						approvedAt: new Date(),
+					},
+				],
+			});
+
+			await db.activity.createMany({
+				data: [
+					{
+						agencyId,
+						type: "TASK",
+						subject: "Collect the balance before departure",
+						bookingId: booking.id,
+						customerId: customer.id,
+						createdById: ownerId,
+						assignedToId: ownerId,
+						dueAt: new Date(year, 0, 15),
+					},
+					{
+						agencyId,
+						type: "TASK",
+						subject: "Send the welcome pack",
+						bookingId: booking.id,
+						customerId: customer.id,
+						createdById: ownerId,
+						assignedToId: ownerId,
+						dueAt: new Date(year + 1, 0, 15),
 					},
 				],
 			});

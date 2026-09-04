@@ -1,0 +1,29 @@
+@media print {
+	@page {
+		margin: 16mm;
+	}
+
+	:root {
+		--background: #ffffff;
+		--foreground: #171717;
+		--card: #ffffff;
+		--card-foreground: #171717;
+		--muted: #f4f4f4;
+		--muted-foreground: #6b6b6b;
+		--border: #e2e2e2;
+		--primary: #006b4f;
+		--primary-foreground: #ffffff;
+	}
+
+	[data-print="hide"] {
+		display: none !important;
+	}
+
+	[data-print="keep"] {
+		break-inside: avoid;
+	}
+
+	a[href]::after {
+		content: none;
+	}
+}

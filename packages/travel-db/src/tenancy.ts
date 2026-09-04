@@ -10,6 +10,7 @@ export const TENANT_MODELS = [
 	"Quote",
 	"QuoteOption",
 	"QuoteItem",
+	"QuoteShare",
 	"Booking",
 	"BookingTraveler",
 	"BookingItem",

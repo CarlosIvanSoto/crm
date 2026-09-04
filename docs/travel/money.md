@@ -61,3 +61,13 @@ only stamps `paidAt`; it does not write a cash-out row.
 only their own rows — the `userId` filter is set by the service, never an input.
 `bookings` and `quotes` now null `sellTotalBase`, `costTotalBase` and
 `marginBase` for a role without `canSeeMargins`.
+
+## The public quote document never carries a cost
+
+`QuoteShare` turns a `Quote` into a page an anonymous customer opens
+(`docs/travel/api.md`'s `publicQuote` router). Its output schema is a
+hand-written whitelist — `sellTotalBase` per option, `sellAmount` per line — and
+has no `cost*` or `margin*` field to null out, unlike `bookings`/`quotes` for a
+signed-in `agent`. There is no role to check because there is no role: every
+anonymous viewer sees the same shape, so the shape itself is the only guard. An
+unpriced line reads "Price on request", never `$0`.

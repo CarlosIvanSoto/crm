@@ -112,7 +112,7 @@ export class TravelersService {
 				medicalNotes: true,
 				customerId: true,
 				customer: { select: { name: true } },
-				_count: { select: { bookingTravelers: true } },
+				_count: { select: { bookingTravelers: true, documents: true } },
 				loyalty: {
 					select: {
 						id: true,
@@ -140,6 +140,7 @@ export class TravelersService {
 			dateOfBirth: traveler.dateOfBirth?.toISOString() ?? null,
 			documentExpiresAt: traveler.documentExpiresAt?.toISOString() ?? null,
 			bookingCount: _count.bookingTravelers,
+			documentCount: _count.documents,
 			createdAt: traveler.createdAt.toISOString(),
 			updatedAt: traveler.updatedAt.toISOString(),
 			archivedAt: traveler.archivedAt?.toISOString() ?? null,

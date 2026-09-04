@@ -2,11 +2,13 @@
 
 import Dashboard from "@carbon/icons-react/es/Dashboard";
 import Delivery from "@carbon/icons-react/es/Delivery";
+import DocumentAttachment from "@carbon/icons-react/es/DocumentAttachment";
 import DocumentBlank from "@carbon/icons-react/es/DocumentBlank";
 import Money from "@carbon/icons-react/es/Money";
 import Plane from "@carbon/icons-react/es/Plane";
 import Settings from "@carbon/icons-react/es/Settings";
 import Store from "@carbon/icons-react/es/Store";
+import Task from "@carbon/icons-react/es/Task";
 import UserMultiple from "@carbon/icons-react/es/UserMultiple";
 import Wallet from "@carbon/icons-react/es/Wallet";
 import { Button } from "@crm/ui/components/button";
@@ -54,6 +56,13 @@ const ITEMS: RailItem[] = [
 		title: "Commissions",
 		href: "/commissions",
 		icon: Wallet,
+		match: "prefix",
+	},
+	{ title: "Tasks", href: "/tasks", icon: Task, match: "prefix" },
+	{
+		title: "Documents",
+		href: "/documents",
+		icon: DocumentAttachment,
 		match: "prefix",
 	},
 	{ title: "Settings", href: "/settings", icon: Settings, match: "prefix" },

@@ -12,11 +12,13 @@ import { CurrencyModule } from "./currency/currency.module";
 import { CustomersModule } from "./customers/customers.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
 import { DatabaseModule } from "./database/database.module";
+import { DocumentsModule } from "./documents/documents.module";
 import { FieldsModule } from "./fields/fields.module";
 import { HealthModule } from "./health/health.module";
 import { LoggingModule } from "./logging/logging.module";
 import { logAuthRoute } from "./logging/request-logger.middleware";
 import { PaymentsModule } from "./payments/payments.module";
+import { QuoteShareModule } from "./quote-share/quote-share.module";
 import { QuotesModule } from "./quotes/quotes.module";
 import { SavedViewsModule } from "./saved-views/saved-views.module";
 import { SuppliersModule } from "./suppliers/suppliers.module";
@@ -47,10 +49,12 @@ import { UsersModule } from "./users/users.module";
 		TravelersModule,
 		SuppliersModule,
 		QuotesModule,
+		QuoteShareModule,
 		BookingsModule,
 		PaymentsModule,
 		CommissionsModule,
 		ActivitiesModule,
+		DocumentsModule,
 		FieldsModule,
 		SavedViewsModule,
 	],

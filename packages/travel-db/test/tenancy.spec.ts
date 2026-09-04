@@ -22,11 +22,15 @@ let bookingA: string;
 let bookingB: string;
 let customerA: string;
 let commissionB: string;
+let quoteShareB: string;
+let documentB: string;
 
 async function seedAgency(id: string): Promise<{
 	bookingId: string;
 	customerId: string;
 	commissionId: string;
+	quoteShareId: string;
+	documentId: string;
 }> {
 	await db.organization.create({
 		data: { id, name: id, slug: id, createdAt: new Date() },
@@ -56,10 +60,41 @@ async function seedAgency(id: string): Promise<{
 		},
 	});
 
+	const quote = await db.quote.create({
+		data: {
+			agencyId: id,
+			folio: `COT-${id}`,
+			customerId: customer.id,
+		},
+	});
+
+	const quoteShare = await db.quoteShare.create({
+		data: {
+			agencyId: id,
+			quoteId: quote.id,
+			tokenHash: `hash-${id}`,
+			createdById: ownerId,
+		},
+	});
+
+	const document = await db.document.create({
+		data: {
+			agencyId: id,
+			bookingId: booking.id,
+			kind: "VOUCHER",
+			pathname: `agencies/${id}/${booking.id}/voucher.pdf`,
+			url: `https://example.test/${id}/voucher.pdf`,
+			filename: "voucher.pdf",
+			uploadedById: ownerId,
+		},
+	});
+
 	return {
 		bookingId: booking.id,
 		customerId: customer.id,
 		commissionId: commission.id,
+		quoteShareId: quoteShare.id,
+		documentId: document.id,
 	};
 }
 
@@ -83,6 +118,8 @@ beforeAll(async () => {
 	bookingB = seededB.bookingId;
 	customerA = seededA.customerId;
 	commissionB = seededB.commissionId;
+	quoteShareB = seededB.quoteShareId;
+	documentB = seededB.documentId;
 });
 
 afterAll(async () => {
@@ -92,7 +129,10 @@ afterAll(async () => {
 
 async function cleanup(): Promise<void> {
 	for (const id of [agencyA, agencyB]) {
+		await db.document.deleteMany({ where: { agencyId: id } });
 		await db.commission.deleteMany({ where: { agencyId: id } });
+		await db.quoteShare.deleteMany({ where: { agencyId: id } });
+		await db.quote.deleteMany({ where: { agencyId: id } });
 		await db.booking.deleteMany({ where: { agencyId: id } });
 		await db.customer.deleteMany({ where: { agencyId: id } });
 		await db.organization.deleteMany({ where: { id } });
@@ -240,6 +280,52 @@ describe("agencyDb", () => {
 		expect(created.agencyId).toBe(agencyA);
 
 		await db.commission.delete({ where: { id: created.id } });
+	});
+
+	it("scopes quoteShare the same way", async () => {
+		const unreachable = await agencyDb(db, agencyA).quoteShare.findFirst({
+			where: { id: quoteShareB },
+		});
+		expect(unreachable).toBeNull();
+
+		const quoteA = await db.quote.findFirstOrThrow({
+			where: { agencyId: agencyA },
+			select: { id: true },
+		});
+
+		const created = await agencyDb(db, agencyA).quoteShare.create({
+			data: {
+				agencyId: agencyB,
+				quoteId: quoteA.id,
+				tokenHash: `hash-${randomUUID()}`,
+				createdById: ownerId,
+			},
+		});
+		expect(created.agencyId).toBe(agencyA);
+
+		await db.quoteShare.delete({ where: { id: created.id } });
+	});
+
+	it("scopes document the same way", async () => {
+		const unreachable = await agencyDb(db, agencyA).document.findFirst({
+			where: { id: documentB },
+		});
+		expect(unreachable).toBeNull();
+
+		const created = await agencyDb(db, agencyA).document.create({
+			data: {
+				agencyId: agencyB,
+				bookingId: bookingA,
+				kind: "TICKET",
+				pathname: `agencies/${agencyA}/${bookingA}/${randomUUID()}.pdf`,
+				url: `https://example.test/${randomUUID()}.pdf`,
+				filename: "ticket.pdf",
+				uploadedById: ownerId,
+			},
+		});
+		expect(created.agencyId).toBe(agencyA);
+
+		await db.document.delete({ where: { id: created.id } });
 	});
 
 	it("does not scope a nested create, so it fails closed", async () => {

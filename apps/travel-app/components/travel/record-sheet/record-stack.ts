@@ -27,6 +27,7 @@ const params = {
 	),
 	[SEARCH_PARAM.record.tab]: parseAsString,
 	[SEARCH_PARAM.record.add]: parseAsString,
+	[SEARCH_PARAM.record.timeline]: parseAsString,
 	[SEARCH_PARAM.fieldsSheet.entity]: parseAsStringLiteral(RECORD_KINDS),
 	[SEARCH_PARAM.fieldsSheet.field]: parseAsString,
 };
@@ -61,6 +62,7 @@ export function useRecordStack() {
 						next.length === 0 ? null : next.map(recordKey),
 					[SEARCH_PARAM.record.tab]: null,
 					[SEARCH_PARAM.record.add]: null,
+					[SEARCH_PARAM.record.timeline]: null,
 					[SEARCH_PARAM.fieldsSheet.entity]: null,
 					[SEARCH_PARAM.fieldsSheet.field]: null,
 				},

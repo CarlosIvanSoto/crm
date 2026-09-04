@@ -30,12 +30,15 @@ import {
 	DetailSheetProperties,
 	DetailSheetProperty,
 	DetailSheetSection,
+	DetailSheetTabs,
 } from "@/components/detail-sheet";
 import { LocalDay, LocalRelativeTime } from "@/components/local-date-time";
 import { documentTypeLabel } from "@/components/travel/document-type";
+import { DocumentsPanel } from "@/components/travel/documents/documents-panel";
+import { canSeeMargins } from "@/lib/roles";
 import { useTravelCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
-import { useRecordStack } from "./record-stack";
+import { useRecordSheetView, useRecordStack } from "./record-stack";
 
 const NO_SUPPLIER = "none";
 
@@ -65,11 +68,15 @@ export function TravelerSheet({ travelerId }: { travelerId: string }) {
 	const trpc = useTRPC();
 	const cache = useTravelCache();
 	const { stack, close } = useRecordStack();
+	const view = useRecordSheetView("overview");
 
 	const traveler = useQuery(
 		trpc.travelers.byId.queryOptions({ id: travelerId }),
 	);
 	const suppliers = useQuery(trpc.suppliers.options.queryOptions({ q: "" }));
+	const me = useQuery(trpc.users.me.queryOptions());
+
+	const canManageAllDocuments = canSeeMargins(me.data?.role ?? null);
 
 	const onError = (error: { message: string }) => toast.error(error.message);
 
@@ -164,6 +171,178 @@ export function TravelerSheet({ travelerId }: { travelerId: string }) {
 			(entry) => entry.programName.trim() !== "" && entry.number.trim() !== "",
 		);
 
+	const overview = (
+		<DetailSheetBody>
+			<DetailSheetSection title="Details">
+				<DetailSheetProperties>
+					<DetailSheetProperty label="Customer">
+						{data?.customerName ?? "—"}
+					</DetailSheetProperty>
+					<DetailSheetProperty label="Born">
+						{data?.dateOfBirth ? <LocalDay date={data.dateOfBirth} /> : "—"}
+					</DetailSheetProperty>
+					<DetailSheetProperty label="Gender">
+						{data?.gender ?? "—"}
+					</DetailSheetProperty>
+					<DetailSheetProperty label="Document">
+						{documentTypeLabel(data?.documentType ?? null)}
+					</DetailSheetProperty>
+					<DetailSheetProperty label="Number">
+						{data?.documentNumber ?? "—"}
+					</DetailSheetProperty>
+					<DetailSheetProperty label="Issued by">
+						{data?.documentIssuedCountry ?? "—"}
+					</DetailSheetProperty>
+					<DetailSheetProperty label="Expires">
+						{data?.documentExpiresAt ? (
+							<LocalDay date={data.documentExpiresAt} />
+						) : (
+							"—"
+						)}
+					</DetailSheetProperty>
+					<DetailSheetProperty label="Created">
+						{data ? <LocalRelativeTime date={data.createdAt} /> : "—"}
+					</DetailSheetProperty>
+				</DetailSheetProperties>
+			</DetailSheetSection>
+
+			{data?.dietaryNotes || data?.medicalNotes ? (
+				<DetailSheetSection title="Care notes">
+					<div className="space-y-2 text-sm">
+						{data.dietaryNotes ? (
+							<p>
+								<span className="text-muted-foreground">Dietary: </span>
+								{data.dietaryNotes}
+							</p>
+						) : null}
+						{data.medicalNotes ? (
+							<p>
+								<span className="text-muted-foreground">Medical: </span>
+								{data.medicalNotes}
+							</p>
+						) : null}
+					</div>
+				</DetailSheetSection>
+			) : null}
+
+			<DetailSheetSection title="Loyalty programs">
+				<div className="space-y-2">
+					{draft.length === 0 ? (
+						<p className="text-muted-foreground text-sm">
+							No programs on file.
+						</p>
+					) : null}
+
+					{draft.map((entry) => (
+						<div
+							key={entry.key}
+							className="grid grid-cols-[1fr_1fr_auto] gap-2"
+						>
+							<Select
+								value={entry.supplierId}
+								onValueChange={(value) =>
+									setDraft((rows) =>
+										rows.map((row) =>
+											row.key === entry.key
+												? { ...row, supplierId: value }
+												: row,
+										),
+									)
+								}
+							>
+								<SelectTrigger>
+									<SelectValue placeholder="Supplier" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value={NO_SUPPLIER}>No supplier</SelectItem>
+									{(suppliers.data ?? []).map((supplier) => (
+										<SelectItem key={supplier.id} value={supplier.id}>
+											{supplier.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<div className="flex gap-2">
+								<Input
+									value={entry.programName}
+									placeholder="Program"
+									onChange={(event) =>
+										setDraft((rows) =>
+											rows.map((row) =>
+												row.key === entry.key
+													? { ...row, programName: event.target.value }
+													: row,
+											),
+										)
+									}
+								/>
+								<Input
+									value={entry.number}
+									placeholder="Number"
+									onChange={(event) =>
+										setDraft((rows) =>
+											rows.map((row) =>
+												row.key === entry.key
+													? { ...row, number: event.target.value }
+													: row,
+											),
+										)
+									}
+								/>
+							</div>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								onClick={() =>
+									setDraft((rows) =>
+										rows.filter((row) => row.key !== entry.key),
+									)
+								}
+							>
+								<TrashCan />
+								<span className="sr-only">Remove program</span>
+							</Button>
+						</div>
+					))}
+
+					<Button
+						variant="outline"
+						size="sm"
+						disabled={draft.length >= 50}
+						onClick={() =>
+							setDraft((rows) => [
+								...rows,
+								{
+									key: `new-${Date.now()}-${rows.length}`,
+									supplierId: NO_SUPPLIER,
+									programName: "",
+									number: "",
+								},
+							])
+						}
+					>
+						<Add data-icon="inline-start" />
+						Add program
+					</Button>
+				</div>
+			</DetailSheetSection>
+		</DetailSheetBody>
+	);
+
+	const documentsTab = (
+		<DetailSheetBody>
+			<DetailSheetSection>
+				{me.data ? (
+					<DocumentsPanel
+						anchor={{ travelerId }}
+						viewerId={me.data.id}
+						canManageAll={canManageAllDocuments}
+					/>
+				) : null}
+			</DetailSheetSection>
+		</DetailSheetBody>
+	);
+
 	return (
 		<>
 			<DetailSheetHeader
@@ -226,161 +405,19 @@ export function TravelerSheet({ travelerId }: { travelerId: string }) {
 				}
 			/>
 
-			<DetailSheetBody>
-				<DetailSheetSection title="Details">
-					<DetailSheetProperties>
-						<DetailSheetProperty label="Customer">
-							{data?.customerName ?? "—"}
-						</DetailSheetProperty>
-						<DetailSheetProperty label="Born">
-							{data?.dateOfBirth ? <LocalDay date={data.dateOfBirth} /> : "—"}
-						</DetailSheetProperty>
-						<DetailSheetProperty label="Gender">
-							{data?.gender ?? "—"}
-						</DetailSheetProperty>
-						<DetailSheetProperty label="Document">
-							{documentTypeLabel(data?.documentType ?? null)}
-						</DetailSheetProperty>
-						<DetailSheetProperty label="Number">
-							{data?.documentNumber ?? "—"}
-						</DetailSheetProperty>
-						<DetailSheetProperty label="Issued by">
-							{data?.documentIssuedCountry ?? "—"}
-						</DetailSheetProperty>
-						<DetailSheetProperty label="Expires">
-							{data?.documentExpiresAt ? (
-								<LocalDay date={data.documentExpiresAt} />
-							) : (
-								"—"
-							)}
-						</DetailSheetProperty>
-						<DetailSheetProperty label="Created">
-							{data ? <LocalRelativeTime date={data.createdAt} /> : "—"}
-						</DetailSheetProperty>
-					</DetailSheetProperties>
-				</DetailSheetSection>
-
-				{data?.dietaryNotes || data?.medicalNotes ? (
-					<DetailSheetSection title="Care notes">
-						<div className="space-y-2 text-sm">
-							{data.dietaryNotes ? (
-								<p>
-									<span className="text-muted-foreground">Dietary: </span>
-									{data.dietaryNotes}
-								</p>
-							) : null}
-							{data.medicalNotes ? (
-								<p>
-									<span className="text-muted-foreground">Medical: </span>
-									{data.medicalNotes}
-								</p>
-							) : null}
-						</div>
-					</DetailSheetSection>
-				) : null}
-
-				<DetailSheetSection title="Loyalty programs">
-					<div className="space-y-2">
-						{draft.length === 0 ? (
-							<p className="text-muted-foreground text-sm">
-								No programs on file.
-							</p>
-						) : null}
-
-						{draft.map((entry) => (
-							<div
-								key={entry.key}
-								className="grid grid-cols-[1fr_1fr_auto] gap-2"
-							>
-								<Select
-									value={entry.supplierId}
-									onValueChange={(value) =>
-										setDraft((rows) =>
-											rows.map((row) =>
-												row.key === entry.key
-													? { ...row, supplierId: value }
-													: row,
-											),
-										)
-									}
-								>
-									<SelectTrigger>
-										<SelectValue placeholder="Supplier" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value={NO_SUPPLIER}>No supplier</SelectItem>
-										{(suppliers.data ?? []).map((supplier) => (
-											<SelectItem key={supplier.id} value={supplier.id}>
-												{supplier.name}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-								<div className="flex gap-2">
-									<Input
-										value={entry.programName}
-										placeholder="Program"
-										onChange={(event) =>
-											setDraft((rows) =>
-												rows.map((row) =>
-													row.key === entry.key
-														? { ...row, programName: event.target.value }
-														: row,
-												),
-											)
-										}
-									/>
-									<Input
-										value={entry.number}
-										placeholder="Number"
-										onChange={(event) =>
-											setDraft((rows) =>
-												rows.map((row) =>
-													row.key === entry.key
-														? { ...row, number: event.target.value }
-														: row,
-												),
-											)
-										}
-									/>
-								</div>
-								<Button
-									variant="ghost"
-									size="icon-sm"
-									onClick={() =>
-										setDraft((rows) =>
-											rows.filter((row) => row.key !== entry.key),
-										)
-									}
-								>
-									<TrashCan />
-									<span className="sr-only">Remove program</span>
-								</Button>
-							</div>
-						))}
-
-						<Button
-							variant="outline"
-							size="sm"
-							disabled={draft.length >= 50}
-							onClick={() =>
-								setDraft((rows) => [
-									...rows,
-									{
-										key: `new-${Date.now()}-${rows.length}`,
-										supplierId: NO_SUPPLIER,
-										programName: "",
-										number: "",
-									},
-								])
-							}
-						>
-							<Add data-icon="inline-start" />
-							Add program
-						</Button>
-					</div>
-				</DetailSheetSection>
-			</DetailSheetBody>
+			<DetailSheetTabs
+				value={view.tab}
+				onValueChange={view.setTab}
+				tabs={[
+					{ value: "overview", label: "Overview", content: overview },
+					{
+						value: "documents",
+						label: "Documents",
+						count: data?.documentCount ?? null,
+						content: documentsTab,
+					},
+				]}
+			/>
 
 			<SaveBar
 				open={dirty}

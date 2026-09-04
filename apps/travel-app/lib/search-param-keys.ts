@@ -11,6 +11,7 @@ export const SEARCH_PARAM = {
 		stack: "record",
 		tab: "tab",
 		add: "add",
+		timeline: "timeline",
 	},
 	fieldsSheet: {
 		entity: "manageFields",
