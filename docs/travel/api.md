@@ -1,9 +1,10 @@
 # Travel API and app — read before you touch `apps/travel-api` or `apps/travel-app`
 
-Status: **built.** Fases 0–3C are done. `apps/travel-api` has 13 routers and 105
-procedures. `apps/travel-app` has the shell, the six entities, the dashboard and
-the five settings screens. `docs/travel/status.md` tracks what is left. This doc
-is the contract the code follows.
+Status: **built.** Fases 0–5B are done. `apps/travel-api` has 14 routers and 122
+procedures. `apps/travel-app` has the shell, the six entities, the dashboard,
+commissions, the task inbox, the record-sheet timeline and the settings screens.
+`docs/travel/status.md` tracks what is left. This doc is the contract the code
+follows.
 
 ## The API is the CRM's API, minus the intelligence, plus one middleware
 
@@ -56,6 +57,43 @@ it is never an input. `agencyId` is never an input either.
 `agency.profile` and `agency.updateProfile` carry `defaultCommissionBasis` and
 `defaultCommissionRate` — the defaults a new commission form starts from, not a
 rule that runs on its own. `updateProfile` still gates on `canManageAgency`.
+
+## `activities` router — tasks and reminders
+
+`Activity` is one row per note, call or task on a customer, quote or booking.
+`timeline` / `timelineCounts` render a record sheet's Timeline tab. `create`
+logs one. `tasks` is the advisor task inbox: `type = TASK`, `completedAt = null`,
+a `window` of `overdue | today | week | all` derived from `dueAt`, paginated with
+`listInput`, with `window` and `assignedTo` facet counts.
+
+`Activity.assignedToId` is who owns a task. `create` sets it to `assignedToId ??`
+the caller; a non-null `assignedToId` must be an agency member or `create` throws
+`BadRequestException`. `assign`, `updateTask`, `remove` and `complete` need the
+assignee or a role with `canSeeMargins` — same "sees all vs. sees own" line as
+commissions, set by the service, never an input. `agencyId` is never an input.
+`completeMany` closes a page of tasks with `runBulk`.
+
+The reminder sweep is `POST|GET /internal/sync/reminders`, a cron controller that
+copies `rates.controller.ts`: `@AllowAnonymous`, a `Bearer <TRAVEL_CRON_SECRET>`
+check with `timingSafeEquals`, 503 with no secret, 403 on mismatch. It walks
+every agency (capped by `REMINDERS.sweep.maxAgenciesPerRun`) and runs three
+steps per agency:
+
+- **Overdue task** — mails the assignee, stamps `reminderSentAt`, writes no row.
+  It does not re-mail inside `REMINDERS.task.resendAfterMs` (7 days).
+- **Overdue payment** — writes a `TASK` row per `SCHEDULED` payment past due,
+  `sourceKey = payment-overdue:<paymentId>`.
+- **Near departure** — writes a `TASK` row per booking leaving inside
+  `REMINDERS.departure.windowDays` (7), `sourceKey = departure:<bookingId>`.
+
+`@@unique([agencyId, sourceKey])` plus `createMany({ skipDuplicates: true })`
+makes steps two and three idempotent with no prior read; a human task has a null
+`sourceKey` and never collides. The endpoint fails closed. The mail fails open:
+with no `TRAVEL_RESEND_API_KEY` or `TRAVEL_REMINDER_FROM` the sweep still writes
+and stamps, and sends nothing. `vercel.json` runs it at `0 8 * * *`.
+
+`dashboard.summary` carries `tasks: { open, overdue }`. `scope: "me"` counts only
+tasks assigned to the caller.
 
 ## Cookie prefix
 

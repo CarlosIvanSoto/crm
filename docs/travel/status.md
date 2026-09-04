@@ -22,8 +22,8 @@ cada área están en `docs/travel/domain.md`, `docs/travel/money.md` y
 | 3C | Tablero (módulo `dashboard` en la API) y ajustes | HECHO |
 | 4A | Comisiones — modelo `Commission`, módulo API, gating de margen | HECHO |
 | 4B | Comisiones en la app | HECHO |
-| 5A | Tareas y recordatorios — `Activity.assignedToId`, bandeja en el router `activities`, barrido con cron | PENDIENTE |
-| 5B | Timeline en las fichas, bandeja de tareas y tarjeta del tablero en la app | PENDIENTE |
+| 5A | Tareas y recordatorios — `Activity.assignedToId`, bandeja en el router `activities`, barrido con cron | HECHO |
+| 5B | Timeline en las fichas, bandeja de tareas y tarjeta del tablero en la app | HECHO |
 | — | Documento de cotización, `apps/travel-agent` | FUERA DE ALCANCE. Cada una necesita su plan |
 
 El plan de la Fase 3 es `docs/travel/plan_03.md`. Se corta en tres rebanadas.
@@ -616,8 +616,9 @@ app/(app)/[agency]/
 - **`settings/fields`** usa `@travel/db/fields-shape` (módulo hoja, sin Prisma) en
   el cliente, nunca `@travel/db/fields`. Selector de entidad en la URL (`?entity`),
   reordenar con `SortableList`, editor en un `Sheet`.
-- **`record-stack.ts`** no tiene `timelineTabParser`. `SEARCH_PARAM` de viajes
-  no tiene la llave `timeline`. La Fase 5B la agrega.
+- **`record-stack.ts`** no tenía `timelineTabParser`. `SEARCH_PARAM` de viajes no
+  tenía la llave `timeline`. La Fase 5B agrega la llave `record.timeline` y la
+  limpia en `write()`.
 
 ### Verificado
 
@@ -824,52 +825,147 @@ components/travel/commissions/
 
 ---
 
-## Fase 5 — PENDIENTE — tareas y recordatorios
+## Fase 5A — HECHO — datos y API de tareas y recordatorios
 
-Plan: `docs/travel/plan_07.md`. Alcance: **solo tareas y recordatorios**. El
-documento de cotización y `apps/travel-agent` quedan fuera. Cada uno necesita su
-plan.
+Plan: `docs/travel/plan_07.md`, rebanada 5A. Alcance: **solo tareas y
+recordatorios**. El documento de cotización y `apps/travel-agent` quedan fuera.
+Cada uno necesita su plan.
 
 ### Problema
 
-El módulo `activities` existe y funciona. Nadie lo ve. `apps/travel-app` no
-renderiza una sola actividad. `activities.myTasks` filtra por `createdById`, así
-que "mis tareas" son "las que yo escribí". Una agencia no reparte pendientes.
+El módulo `activities` existía y funcionaba. Nadie lo veía. `activities.myTasks`
+filtraba por `createdById`, así que "mis tareas" eran "las que yo escribí". Una
+agencia con cuatro asesores no repartía pendientes.
 
-### Rebanadas
+### Archivos
 
-- **5A — datos y API.** Cuatro columnas nuevas en `Activity`: `assignedToId`,
-  `reminderSentAt`, `sourceKey`, con `@@unique([agencyId, sourceKey])`. El router
-  `activities` gana una bandeja de tareas por asignado, `assign`, `updateTask`,
-  `remove` y `completeMany`. Un barrido `/internal/sync/reminders` con la forma
-  de `rates.controller.ts`: falla cerrado sin `TRAVEL_CRON_SECRET`. Tres
-  disparadores: tarea vencida (correo, sin fila), pago vencido y salida próxima
-  (crean filas `TASK` idempotentes por `sourceKey`). Correo por Resend opcional
-  con `TRAVEL_REMINDER_FROM`; falla abierto.
-- **5B — la app.** El timeline de `apps/app/components/crm/timeline/` portado a
-  `components/travel/timeline/`, sin las ramas de correo ni de calendario. Una
-  pestaña Timeline en las fichas de cliente, cotización y reserva. La bandeja
-  `app/(app)/[agency]/tasks/` con la plantilla de cinco archivos de
-  `commissions/`. Una tarjeta "My tasks" en el tablero.
+```
+packages/travel-db/prisma/schema.prisma            + assignedToId, reminderSentAt, sourceKey; @@unique([agencyId, sourceKey]); índices nuevos
+packages/travel-db/prisma/migrations/20260904120000_activity_assignee_and_reminders/
+                                                   ALTER TABLE + UPDATE de respaldo (createdById → assignedToId en TASK)
+packages/travel-db/prisma/seed.ts                  + dos tareas por agencia, una vencida y una futura, asignadas al owner
 
-### Decisiones fijadas
+apps/travel-api/src/activities/activities.contracts.ts   + taskListInput/Output, assignInput, updateTaskInput, removeInput, completeManyInput; activityEntryOutput gana assignedTo, reminderSentAt, sourceKey
+apps/travel-api/src/activities/activities.service.ts     myTasks → tasks(agencyId, role, viewerId, input); + assign, updateTask, remove, completeMany; complete gana guarda
+apps/travel-api/src/activities/activities.router.ts      myTasks → tasks (POST /activities/tasks/search); + assign, updateTask, remove, completeMany
+apps/travel-api/src/activities/reminders-config.ts       REMINDERS as const
+apps/travel-api/src/activities/reminders.service.ts      sweepAllAgencies(): tarea vencida, pago vencido, salida próxima
+apps/travel-api/src/activities/reminders.controller.ts   GET|POST /internal/sync/reminders, copia rates.controller.ts
+apps/travel-api/src/activities/reminder-mailer.ts        sendReminderEmail(): Resend opcional, falla abierto
+apps/travel-api/src/activities/activities.module.ts      + RemindersController, + RemindersService
+apps/travel-api/src/dashboard/dashboard.service.ts       + tasks: { open, overdue }; scope "me" filtra por assignedToId
+apps/travel-api/src/dashboard/dashboard.contracts.ts     + tasks en la salida
+apps/travel-api/src/config/env.validation.ts             + TRAVEL_REMINDER_FROM
+apps/travel-api/vercel.json                              + reminders (0 8 * * *); quita los 4 crons muertos
+apps/travel-api/test/activities.spec.ts                  nuevo — alcance por rol, asignación, ventanas, guarda de complete
+apps/travel-api/test/reminders.spec.ts                   nuevo — aislamiento por agencia, idempotencia, 503/403, sin Resend, ventana de re-aviso
+.env.example, turbo.json, apps/travel-api/turbo.json     + TRAVEL_REMINDER_FROM
+```
+
+### Decisiones
 
 - **`assignedToId` es columna, no `meta`.** Un filtro y un índice la necesitan.
 - **El asignado por defecto es el autor.** La migración copia `createdById` a las
-  filas `TASK` existentes.
-- **`agent` ve solo lo asignado a él.** Mismo idioma que comisiones:
-  `canSeeMargins` separa "ve todo" de "ve lo suyo". Sin predicado nuevo.
+  filas `TASK` existentes con un `UPDATE` a mano.
+- **`agent` ve solo lo asignado a él.** `canSeeMargins` separa "ve todo" de "ve
+  lo suyo", lo pone el servicio, nunca es input. Sin predicado nuevo.
+- **`complete`, `assign`, `updateTask`, `remove`** exigen el asignado o
+  `canSeeMargins`. Antes cualquier miembro cerraba cualquier tarea.
+- **La colisión de `upcoming` se parte.** El timeline conserva `upcoming` = tarea
+  abierta. La bandeja usa `window: overdue | today | week | all` derivado de
+  `dueAt`. Dos vistas, dos vocabularios.
 - **El barrido escribe filas `Activity`, no un modelo nuevo.** La idempotencia es
-  la restricción única, no un `SELECT` previo.
-- **Endpoint falla cerrado. Correo falla abierto.** Frontera de autorización
-  contra canal lateral.
+  `@@unique([agencyId, sourceKey])` + `createMany({ skipDuplicates: true })`, no
+  un `SELECT` previo. Una tarea humana tiene `sourceKey` nulo y no choca.
+- **El endpoint falla cerrado. El correo falla abierto.** Sin `TRAVEL_CRON_SECRET`
+  el barrido responde 503. Sin `TRAVEL_RESEND_API_KEY`/`TRAVEL_REMINDER_FROM`
+  escribe y estampa, y no manda correo.
+- **La migración se hizo con `prisma migrate diff` + `migrate deploy`**, no con
+  `migrate dev` (no corre sin TTY). `travel:auth:generate` no se corrió.
 
-### Cierra pendientes de fases anteriores
+### Verificado
 
-- `apps/travel-api/vercel.json` declara 5 crons; solo `rates` existe. 5A agrega
-  `reminders` y quita los 4 muertos.
-- `status.md` afirmaba que `record-stack.ts` tiene `timelineTabParser`. No lo
-  tiene. 5B lo agrega.
+- `bun run check-types` — 22/22.
+- `bun run lint` — pasa (warnings de barrel preexistentes).
+- `bun run lint:slop` — pasa.
+- `bun run --filter=travel-api test` — 203 casos (186 + 17 nuevos).
+- `curl -X POST /internal/sync/reminders` sin auth → 403; con auth correcto →
+  `{ agencies, reminded, created, ... }`; segunda corrida → `reminded: 0`.
+- Swagger muestra `/internal/sync/reminders` en el documento OpenAPI.
+
+### Pendiente de 5A
+
+- La base `travel` local no se resembró: `prisma db seed` no es idempotente y
+  `migrate reset` necesita consentimiento. La migración sí está aplicada en
+  `travel` y en `travel_test`. Las dos tareas de semilla se insertaron a mano en
+  la base local para el recorrido de 5B.
+- El `curl` sin secreto responde 403, no 503, porque `TRAVEL_CRON_SECRET` ya está
+  en el `.env` local. El caso 503 lo cubre la prueba unitaria del controlador.
+
+## Fase 5B — HECHO — timeline, bandeja de tareas y tarjeta del tablero
+
+Plan: `docs/travel/plan_07.md`, rebanada 5B. Rutas y textos en inglés, como 3A a
+4B.
+
+### Archivos nuevos — `apps/travel-app`
+
+```
+components/travel/timeline/
+  timeline.tsx                 portado de apps/app; ancla { customerId } | { quoteId } | { bookingId }; pestañas all|notes|upcoming|done
+  timeline-entry.tsx           sin ramas de correo/calendario/deal/contact; + nombre del asignado
+  activity-composer.tsx        + selector de asesor cuando el tipo es TASK; tipos NOTE|CALL|TASK
+  activity-icon.tsx            usa la presentación de viajes
+  timeline-search-params.ts    TIMELINE_TABS = all|notes|upcoming|done
+components/travel/activity-presentation.ts    activityLabel/activityIcon sobre el ActivityType de viajes (con SYSTEM)
+lib/use-hydrated.ts            copia de apps/app
+
+app/(app)/[agency]/tasks/
+  page.tsx                     servidor, requireSession + prefetch + HydrateClient
+  tasks-search-params.ts       createListSearchParams({ tabId: "window", facetIds: ["assignedTo"] })
+  tasks-table.tsx              cliente, COLUMNS + useTableQuery; el clic abre la ficha del ancla en pestaña timeline
+  tasks-bulk-actions.tsx       activities.completeMany
+  create-task-sheet.tsx        Sheet por ?new=true; selector de ancla (customer/quote/booking) y de asesor
+```
+
+### Cambios fuera de los archivos nuevos
+
+| Archivo | Cambio |
+| --- | --- |
+| `components/travel/record-sheet/booking-sheet.tsx` | + pestaña `timeline` con `<Timeline anchor={{ bookingId }} />` |
+| `components/travel/record-sheet/quote-sheet.tsx` | + pestaña `timeline` con `<Timeline anchor={{ quoteId }} />` |
+| `components/travel/record-sheet/customer-sheet.tsx` | pasa de `DetailSheetBody` plano a `DetailSheetTabs` con `overview` y `timeline` |
+| `components/travel/record-sheet/record-stack.ts` | + `record.timeline` en `params`, y se limpia en `write()` |
+| `lib/search-param-keys.ts` | + `record.timeline: "timeline"` |
+| `lib/trpc/cache.ts` | `activityKeys()`: `myTasks` → `tasks`; `activity()` invalida `dashboard.summary` |
+| `components/app-icon-rail.tsx` | + `{ title: "Tasks", href: "/tasks", icon: Task }` entre Commissions y Settings |
+| `proxy.ts` | + `/tasks` en `SECTIONS` |
+| `components/travel/status-labels.ts` | + `TASK_WINDOWS` y `taskWindowLabel` |
+| `app/(app)/[agency]/dashboard-summary.tsx` | + tarjeta "My tasks" con `open` y `overdue` de `dashboard.summary().tasks` |
+
+### Decisiones de 5B
+
+- **La tarea no es un `RecordKind`.** La tabla no abre ficha propia. El clic abre
+  la ficha del ancla (`openRecord({ kind, id })` + `setTab("timeline")`), como la
+  tabla de comisiones abre la reserva.
+- **El timeline no enlaza.** Se quita `RecordLink` al portar; una entrada del
+  timeline no navega a nada.
+- **`window` es `tabId`, no faceta.** `createListSearchParams` da un parámetro
+  escalar con default `"all"`; `assignedTo` sí es faceta.
+- **Sin correo ni calendario.** El modelo de viajes no tiene `emailThread` ni
+  `calendarEvent`, así que `email-thread-entry.tsx` y `meeting-entry.tsx` no se
+  portan y el composer no ofrece EMAIL ni MEETING.
+
+### Verificado
+
+- `bun run check-types` — 22/22 (`next typegen` para la ruta `/tasks` nueva).
+- `bun run lint` — pasa. `bun run lint:slop` — pasa.
+- `bun run --filter=travel-api test` — 203 casos.
+
+### Pendiente de 5B
+
+- El `next dev` real no se ejecutó. `check-types`, `lint`, `lint:slop` y las
+  pruebas de la API sí.
+- Recorrido manual con dos cuentas en dos agencias, según `plan_07.md`.
 
 ### Riesgos abiertos de la Fase 5
 
@@ -879,6 +975,10 @@ que "mis tareas" son "las que yo escribí". Una agencia no reparte pendientes.
   acota; un cursor entre corridas queda pendiente.
 - Sin recordatorio de documento por vencer. El modelo `Document` no tiene fecha
   de expiración.
+- "Salida próxima" no re-avisa si la fecha de salida cambia: el `sourceKey` es
+  por reserva.
+- La tabla de tareas muestra "Booking"/"Quote"/"Customer" como ancla, no el
+  folio ni el nombre. `activityEntryOutput` no trae esas etiquetas.
 
 ---
 
