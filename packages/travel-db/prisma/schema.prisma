@@ -32,6 +32,7 @@ model User {
   ownedQuotes      Quote[]    @relation("QuoteOwner")
   ownedBookings    Booking[]  @relation("BookingOwner")
   authoredActivity Activity[] @relation("ActivityAuthor")
+  assignedActivity Activity[] @relation("ActivityAssignee")
   uploadedDocs     Document[] @relation("DocumentUploader")
   fieldValues      FieldValue[] @relation("FieldValueUser")
   savedViews       SavedView[]  @relation("SavedViewOwner")
@@ -880,14 +881,21 @@ model Activity {
   createdBy   User   @relation("ActivityAuthor", fields: [createdById], references: [id])
   meta        Json?
 
+  assignedToId   String?
+  assignedTo     User?     @relation("ActivityAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  reminderSentAt DateTime?
+  sourceKey      String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([agencyId, sourceKey])
   @@index([agencyId, createdAt])
   @@index([customerId, createdAt])
   @@index([quoteId, createdAt])
   @@index([bookingId, createdAt])
-  @@index([dueAt])
+  @@index([agencyId, assignedToId, completedAt, dueAt])
+  @@index([agencyId, dueAt])
   @@index([createdById])
   @@map("activity")
 }

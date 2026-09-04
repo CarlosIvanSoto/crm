@@ -305,6 +305,31 @@ async function seedAgency(
 					},
 				],
 			});
+
+			await db.activity.createMany({
+				data: [
+					{
+						agencyId,
+						type: "TASK",
+						subject: "Collect the balance before departure",
+						bookingId: booking.id,
+						customerId: customer.id,
+						createdById: ownerId,
+						assignedToId: ownerId,
+						dueAt: new Date(year, 0, 15),
+					},
+					{
+						agencyId,
+						type: "TASK",
+						subject: "Send the welcome pack",
+						bookingId: booking.id,
+						customerId: customer.id,
+						createdById: ownerId,
+						assignedToId: ownerId,
+						dueAt: new Date(year + 1, 0, 15),
+					},
+				],
+			});
 		}
 	}
 
