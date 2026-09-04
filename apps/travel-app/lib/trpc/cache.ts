@@ -1,6 +1,7 @@
 "use client";
 
 import { type QueryKey, useQueryClient } from "@tanstack/react-query";
+import type { DocumentAnchor } from "@/components/travel/documents/document-meta";
 import type { FieldEntity } from "@/components/travel/fields/fields-entity";
 import { useTRPC } from "./client";
 
@@ -32,6 +33,7 @@ export type TravelCache = {
 	booking(id?: string, options?: Options): Promise<void>;
 	payment(bookingId?: string, options?: Options): Promise<void>;
 	commission(bookingId?: string, options?: Options): Promise<void>;
+	document(anchor?: DocumentAnchor, options?: Options): Promise<void>;
 	activity(options?: Options): Promise<void>;
 	fields(entity?: RecordKind, options?: Options): Promise<void>;
 	savedViews(entity?: RecordKind, options?: Options): Promise<void>;
@@ -122,7 +124,12 @@ export function useTravelCache(): TravelCache {
 		traveler: (id, options) =>
 			run(
 				[record("traveler", id)],
-				[...listKeys(), ...activityKeys(), trpc.travelers.options.queryKey()],
+				[
+					...listKeys(),
+					...activityKeys(),
+					trpc.travelers.options.queryKey(),
+					trpc.documents.list.queryKey(),
+				],
 				options,
 			),
 
@@ -136,7 +143,12 @@ export function useTravelCache(): TravelCache {
 		quote: (id, options) =>
 			run(
 				[record("quote", id)],
-				[...listKeys(), ...activityKeys(), trpc.bookings.list.queryKey()],
+				[
+					...listKeys(),
+					...activityKeys(),
+					trpc.bookings.list.queryKey(),
+					trpc.quoteShare.status.queryKey(),
+				],
 				options,
 			),
 
@@ -151,6 +163,7 @@ export function useTravelCache(): TravelCache {
 					trpc.commissions.byBooking.queryKey(),
 					trpc.commissions.byAdvisor.queryKey(),
 					trpc.currency.settings.queryKey(),
+					trpc.documents.list.queryKey(),
 				],
 				options,
 			),
@@ -182,6 +195,23 @@ export function useTravelCache(): TravelCache {
 						? trpc.bookings.byId.queryKey({ id: bookingId })
 						: trpc.bookings.byId.queryKey(),
 					trpc.bookings.list.queryKey(),
+				],
+				options,
+			),
+
+		document: (anchor, options) =>
+			run(
+				[
+					trpc.documents.list.queryKey(),
+					...(anchor ? [trpc.documents.list.queryKey({ ...anchor })] : []),
+				],
+				[
+					anchor && "bookingId" in anchor
+						? trpc.bookings.byId.queryKey({ id: anchor.bookingId })
+						: trpc.bookings.byId.queryKey(),
+					anchor && "travelerId" in anchor
+						? trpc.travelers.byId.queryKey({ id: anchor.travelerId })
+						: trpc.travelers.byId.queryKey(),
 				],
 				options,
 			),

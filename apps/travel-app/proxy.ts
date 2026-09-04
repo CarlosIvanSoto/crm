@@ -8,7 +8,7 @@ const SIGN_IN_PATH = "/sign-in";
 
 const NEW_AGENCY_PATH = "/new-agency";
 
-const PUBLIC = ["/sign-in", "/sign-up", "/accept"];
+const PUBLIC = ["/sign-in", "/sign-up", "/accept", "/q"];
 
 const SECTIONS = [
 	"/customers",
@@ -19,6 +19,7 @@ const SECTIONS = [
 	"/payments",
 	"/commissions",
 	"/tasks",
+	"/documents",
 	"/settings",
 ];
 
