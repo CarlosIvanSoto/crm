@@ -37,6 +37,7 @@ import {
 	newTraveler,
 	TravelersEditor,
 } from "@/components/travel/bookings/travelers-editor";
+import { CommissionsPanel } from "@/components/travel/commissions/commissions-panel";
 import { ItemsEditor } from "@/components/travel/itinerary/items-editor";
 import {
 	draftFromOutput,
@@ -48,7 +49,7 @@ import {
 	BOOKING_STATUSES,
 	bookingStatusLabel,
 } from "@/components/travel/status-labels";
-import { canRecordPayment } from "@/lib/roles";
+import { canManageCommission, canRecordPayment } from "@/lib/roles";
 import { useTravelCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
 import type { RouterInputs, RouterOutputs } from "@/lib/trpc/types";
@@ -97,6 +98,7 @@ export function BookingSheet({ bookingId }: { bookingId: string }) {
 	const me = useQuery(trpc.users.me.queryOptions());
 
 	const canRecord = canRecordPayment(me.data?.role ?? null);
+	const canManageCommissions = canManageCommission(me.data?.role ?? null);
 
 	const onError = (error: { message: string }) => toast.error(error.message);
 
@@ -311,6 +313,17 @@ export function BookingSheet({ bookingId }: { bookingId: string }) {
 		</DetailSheetBody>
 	);
 
+	const commissionsTab = (
+		<DetailSheetBody>
+			<DetailSheetSection>
+				<CommissionsPanel
+					bookingId={bookingId}
+					canManage={canManageCommissions}
+				/>
+			</DetailSheetSection>
+		</DetailSheetBody>
+	);
+
 	return (
 		<>
 			<DetailSheetHeader
@@ -396,6 +409,11 @@ export function BookingSheet({ bookingId }: { bookingId: string }) {
 						value: "payments",
 						label: "Payments",
 						content: paymentsTab,
+					},
+					{
+						value: "commissions",
+						label: "Commissions",
+						content: commissionsTab,
 					},
 				]}
 			/>

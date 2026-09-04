@@ -35,6 +35,8 @@ model User {
   uploadedDocs     Document[] @relation("DocumentUploader")
   fieldValues      FieldValue[] @relation("FieldValueUser")
   savedViews       SavedView[]  @relation("SavedViewOwner")
+  earnedCommissions   Commission[] @relation("CommissionEarner")
+  authoredCommissions Commission[] @relation("CommissionAuthor")
 
   @@unique([email])
   @@map("user")
@@ -125,6 +127,7 @@ model Organization {
   bookingItems     BookingItem[]
   payments         Payment[]
   supplierPayments SupplierPayment[]
+  commissions      Commission[]
   documents        Document[]
   activities       Activity[]
   fieldDefinitions FieldDefinition[]
@@ -215,6 +218,8 @@ model AgencySettings {
   quotePrefix  String  @default("COT")
   bookingPrefix String @default("EXP")
   defaultTerms String?
+  defaultCommissionBasis CommissionBasis?
+  defaultCommissionRate  Decimal?         @db.Decimal(6, 4)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -564,6 +569,7 @@ model Booking {
   items            BookingItem[]
   payments         Payment[]
   supplierPayments SupplierPayment[]
+  commissions      Commission[]
   documents        Document[]
   activities       Activity[]
 
@@ -729,6 +735,58 @@ model SupplierPayment {
   @@index([supplierId])
   @@index([bookingId])
   @@map("supplierPayment")
+}
+
+enum CommissionBasis {
+  MARGIN
+  SELL
+  FIXED
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  PAID
+  VOID
+}
+
+model Commission {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation("CommissionEarner", fields: [userId], references: [id], onDelete: Restrict)
+
+  basis CommissionBasis
+  rate  Decimal? @db.Decimal(6, 4)
+
+  basisBaseAmount Decimal?  @db.Decimal(24, 4)
+  amount          Decimal?  @db.Decimal(14, 2)
+  currency        String?
+  amountBase      Decimal?  @db.Decimal(24, 4)
+  baseCurrency    String?
+  fxRate          Decimal?  @db.Decimal(20, 10)
+  fxRateAt        DateTime?
+
+  status     CommissionStatus @default(PENDING)
+  approvedAt DateTime?
+  paidAt     DateTime?
+  note       String?
+
+  createdById String
+  createdBy   User   @relation("CommissionAuthor", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agencyId])
+  @@index([agencyId, status, createdAt])
+  @@index([agencyId, userId, status])
+  @@index([bookingId])
+  @@map("commission")
 }
 
 enum RateSource {

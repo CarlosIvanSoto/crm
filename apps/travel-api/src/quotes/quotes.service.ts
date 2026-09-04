@@ -4,6 +4,7 @@ import {
 	Logger,
 	NotFoundException,
 } from "@nestjs/common";
+import { type AgencyRole, canSeeMargins } from "@travel/auth";
 import {
 	agencyDb,
 	COUNTER_KIND,
@@ -119,8 +120,9 @@ export class QuotesService {
 		};
 	}
 
-	async byId(agencyId: string, id: string) {
+	async byId(agencyId: string, role: AgencyRole, id: string) {
 		const scoped = agencyDb(this.db, agencyId);
+		const seeMargins = canSeeMargins(role);
 		const quote = await scoped.quote.findFirst({
 			where: { id },
 			select: {
@@ -221,10 +223,10 @@ export class QuotesService {
 					label: option.label,
 					position: option.position,
 					isRecommended: option.isRecommended,
-					sellTotalBase: sellTotal,
-					costTotalBase: costTotal,
+					sellTotalBase: seeMargins ? sellTotal : null,
+					costTotalBase: seeMargins ? costTotal : null,
 					marginBase:
-						sellTotal !== null && costTotal !== null
+						seeMargins && sellTotal !== null && costTotal !== null
 							? sellTotal - costTotal
 							: null,
 					baseCurrency: option.baseCurrency,
@@ -393,6 +395,7 @@ export class QuotesService {
 
 	async setOptions(
 		agencyId: string,
+		role: AgencyRole,
 		id: string,
 		options: {
 			label: string;
@@ -470,7 +473,7 @@ export class QuotesService {
 			options: built.length,
 		});
 
-		return this.byId(agencyId, id);
+		return this.byId(agencyId, role, id);
 	}
 
 	async accept(agencyId: string, id: string, optionId: string) {

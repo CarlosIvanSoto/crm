@@ -54,6 +54,7 @@ export async function seedAgency(tag: string): Promise<SeededAgency> {
 }
 
 export async function dropAgency(agencyId: string): Promise<void> {
+	await db.commission.deleteMany({ where: { agencyId } });
 	await db.bookingItem.deleteMany({ where: { agencyId } });
 	await db.bookingTraveler.deleteMany({ where: { agencyId } });
 	await db.booking.deleteMany({ where: { agencyId } });

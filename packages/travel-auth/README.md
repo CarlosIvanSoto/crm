@@ -44,9 +44,10 @@ the mechanism.
 
 `better-auth generate` rewrites the auth-owned models in
 `packages/travel-db/prisma/schema.prisma` and **deletes what it does not know**.
-`Organization` there carries ~18 hand-written inverse relations (`quotes`,
-`bookings`, `customers`, `settings`, `counters`, …) and `Member.role` has
-`@default("agent")`. The CLI removes both.
+`Organization` there carries ~19 hand-written inverse relations (`quotes`,
+`bookings`, `customers`, `settings`, `counters`, `commissions`, …), `User`
+carries `earnedCommissions` and `authoredCommissions`, and `Member.role` has
+`@default("agent")`. The CLI removes all of them.
 
 Mandatory flow:
 

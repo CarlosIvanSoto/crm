@@ -52,7 +52,7 @@ export class QuotesRouter {
 		meta: restMeta("GET", "/quotes/{id}", ["Quotes"]),
 	})
 	async byId(@Ctx() ctx: AgencyTrpcContext, @Input("id") id: string) {
-		return this.quotes.byId(ctx.agencyId, id);
+		return this.quotes.byId(ctx.agencyId, ctx.role, id);
 	}
 
 	@Mutation({
@@ -88,7 +88,12 @@ export class QuotesRouter {
 		@Ctx() ctx: AgencyTrpcContext,
 		@Input() input: z.infer<typeof setQuoteOptionsInput>,
 	) {
-		return this.quotes.setOptions(ctx.agencyId, input.id, input.options);
+		return this.quotes.setOptions(
+			ctx.agencyId,
+			ctx.role,
+			input.id,
+			input.options,
+		);
 	}
 
 	@Mutation({

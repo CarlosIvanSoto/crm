@@ -15,6 +15,7 @@ export const TENANT_MODELS = [
 	"BookingItem",
 	"Payment",
 	"SupplierPayment",
+	"Commission",
 	"Document",
 	"Activity",
 	"FieldDefinition",

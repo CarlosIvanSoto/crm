@@ -16,6 +16,7 @@ const publicProcedure = t.procedure;
 import { timelineInput, timelineOutput, timelineCountsInput, timelineCountsOutput, myTasksInput, myTasksOutput, activityCreateInput, activityCreateOutput, completeInput, completeOutput } from "../activities/activities.contracts";
 import { agencyProfileOutput, updateAgencyProfileInput, agencyMemberListOutput, invitationListOutput, inviteMemberInput, inviteMemberOutput, invitationIdInput, setMemberRoleInput, agencyMemberOutput, memberIdInput } from "../agency/agency.contracts";
 import { bookingListInput, bookingListOutput, bookingIdInput, bookingDetailOutput, bookingCreateInput, bookingSummaryOutput, bookingUpdateArgs, setBookingItemsInput, setBookingTravelersInput, bookingArchiveResultOutput, bookingBulkInput, bookingBulkResultOutput } from "../bookings/bookings.contracts";
+import { commissionListInput, commissionListOutput, commissionByBookingInput, commissionByBookingOutput, advisorReportOutput, supplierReportOutput, createCommissionInput, commissionSummaryOutput, updateCommissionInput, commissionRowOutput, commissionIdInput, commissionDeleteOutput, commissionBulkInput, commissionBulkResultOutput } from "../commissions/commissions.contracts";
 import { currencySettingsOutput, setBaseCurrencyInput, setManualRateInput, removeManualRateInput } from "../currency/currency.contracts";
 import { customerListInput, customerListOutput, customerIdInput, customerDetailOutput, customerOptionsInput, customerOptionOutput, customerCreateInput, customerSummaryOutput, customerUpdateArgs, customerArchiveResultOutput, customerBulkOwnerInput, customerBulkResultOutput, customerBulkInput } from "../customers/customers.contracts";
 import { dashboardSummaryInput, dashboardSummaryOutput } from "../dashboard/dashboard.contracts";
@@ -129,6 +130,58 @@ const appRouter = t.router({
     bulkPurge: publicProcedure
       .input(bookingBulkInput)
       .output(bookingBulkResultOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  commissions: t.router({
+    list: publicProcedure
+      .input(commissionListInput)
+      .output(commissionListOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    byBooking: publicProcedure
+      .input(commissionByBookingInput)
+      .output(commissionByBookingOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    byAdvisor: publicProcedure
+      .output(advisorReportOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    bySupplier: publicProcedure
+      .output(supplierReportOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    create: publicProcedure
+      .input(createCommissionInput)
+      .output(commissionSummaryOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    update: publicProcedure
+      .input(updateCommissionInput)
+      .output(commissionRowOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    recalculate: publicProcedure
+      .input(commissionIdInput)
+      .output(commissionRowOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    approve: publicProcedure
+      .input(commissionIdInput)
+      .output(commissionSummaryOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    markPaid: publicProcedure
+      .input(commissionIdInput)
+      .output(commissionSummaryOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    void: publicProcedure
+      .input(commissionIdInput)
+      .output(commissionSummaryOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    remove: publicProcedure
+      .input(commissionIdInput)
+      .output(commissionDeleteOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    bulkApprove: publicProcedure
+      .input(commissionBulkInput)
+      .output(commissionBulkResultOutput)
+      .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    bulkMarkPaid: publicProcedure
+      .input(commissionBulkInput)
+      .output(commissionBulkResultOutput)
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   currency: t.router({

@@ -114,7 +114,13 @@ async function seedAgency(
 	});
 
 	await db.agencySettings.create({
-		data: { agencyId, baseCurrency: "USD", email: ownerEmail },
+		data: {
+			agencyId,
+			baseCurrency: "USD",
+			email: ownerEmail,
+			defaultCommissionBasis: "MARGIN",
+			defaultCommissionRate: "0.1000",
+		},
 	});
 	await db.agencyCounter.createMany({
 		data: [
@@ -271,6 +277,31 @@ async function seedAgency(
 						amount: "340.00",
 						currency: "USD",
 						status: "SCHEDULED",
+					},
+				],
+			});
+
+			await db.commission.createMany({
+				data: [
+					{
+						agencyId,
+						bookingId: booking.id,
+						userId: ownerId,
+						createdById: ownerId,
+						basis: "MARGIN",
+						rate: "0.1000",
+						status: "PENDING",
+					},
+					{
+						agencyId,
+						bookingId: booking.id,
+						userId: ownerId,
+						createdById: ownerId,
+						basis: "FIXED",
+						amount: "150.00",
+						currency: "USD",
+						status: "APPROVED",
+						approvedAt: new Date(),
 					},
 				],
 			});

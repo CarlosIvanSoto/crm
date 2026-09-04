@@ -6,6 +6,7 @@ import { ActivitiesModule } from "./activities/activities.module";
 import { AgencyModule } from "./agency/agency.module";
 import { BookingsModule } from "./bookings/bookings.module";
 import { AppCacheModule } from "./cache/cache.module";
+import { CommissionsModule } from "./commissions/commissions.module";
 import { validateEnv } from "./config/env.validation";
 import { CurrencyModule } from "./currency/currency.module";
 import { CustomersModule } from "./customers/customers.module";
@@ -48,6 +49,7 @@ import { UsersModule } from "./users/users.module";
 		QuotesModule,
 		BookingsModule,
 		PaymentsModule,
+		CommissionsModule,
 		ActivitiesModule,
 		FieldsModule,
 		SavedViewsModule,

@@ -3,6 +3,7 @@ import { z } from "zod";
 import * as activityContracts from "../src/activities/activities.contracts";
 import * as agencyContracts from "../src/agency/agency.contracts";
 import * as bookingContracts from "../src/bookings/bookings.contracts";
+import * as commissionContracts from "../src/commissions/commissions.contracts";
 import * as currencyContracts from "../src/currency/currency.contracts";
 import * as customerContracts from "../src/customers/customers.contracts";
 import * as dashboardContracts from "../src/dashboard/dashboard.contracts";
@@ -54,6 +55,7 @@ const schemas = [
 	...collect("activities", activityContracts),
 	...collect("agency", agencyContracts),
 	...collect("bookings", bookingContracts),
+	...collect("commissions", commissionContracts),
 	...collect("currency", currencyContracts),
 	...collect("customers", customerContracts),
 	...collect("dashboard", dashboardContracts),

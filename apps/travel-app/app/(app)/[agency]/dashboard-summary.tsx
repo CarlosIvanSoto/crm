@@ -54,6 +54,12 @@ const DEPARTURE_COLUMNS: SimpleTableColumn[] = [
 	{ id: "start", header: "Departs", width: "w-28", align: "right" },
 ];
 
+const ADVISOR_COLUMNS: SimpleTableColumn[] = [
+	{ id: "advisor", header: "Advisor" },
+	{ id: "bookings", header: "Bookings", width: "w-24", align: "right" },
+	{ id: "commission", header: "Commission", width: "w-32", align: "right" },
+];
+
 export function DashboardSummary() {
 	const trpc = useTRPC();
 	const openRecord = useOpenRecord();
@@ -68,6 +74,7 @@ export function DashboardSummary() {
 		...trpc.dashboard.summary.queryOptions({ scope }),
 		placeholderData: (previous) => previous,
 	});
+	const advisorQuery = useQuery(trpc.commissions.byAdvisor.queryOptions());
 
 	const summary = summaryQuery.data;
 
@@ -226,6 +233,52 @@ export function DashboardSummary() {
 								</span>
 							) : null}
 						</div>
+					</CardPanel>
+				</Card>
+			</DashboardRow>
+
+			<DashboardRow split="even">
+				<Card className="min-w-0">
+					<CardHeader>
+						<CardTitle>Top advisors</CardTitle>
+						<CardDescription>
+							Commission owed, most first, in {baseCurrency}
+						</CardDescription>
+					</CardHeader>
+					<CardPanel>
+						{(advisorQuery.data?.rows.length ?? 0) === 0 ? (
+							<CardPanelEmpty>No commissions yet.</CardPanelEmpty>
+						) : (
+							<SimpleTable
+								variant="panel"
+								surface="page"
+								columns={ADVISOR_COLUMNS}
+							>
+								{[...(advisorQuery.data?.rows ?? [])]
+									.sort((a, b) => b.commissionBase - a.commissionBase)
+									.slice(0, 6)
+									.map((row) => (
+										<SimpleTableRow key={row.userId}>
+											<TableCell className={CELL}>
+												<span className="truncate font-medium">
+													{row.userName}
+												</span>
+												{row.missingRate > 0 ? (
+													<span className="ml-2 text-muted-foreground text-xs">
+														{row.missingRate} without a rate
+													</span>
+												) : null}
+											</TableCell>
+											<TableCell className={`${CELL} text-right tabular-nums`}>
+												{row.bookings}
+											</TableCell>
+											<TableCell className={`${CELL} text-right tabular-nums`}>
+												{exact(row.commissionBase)}
+											</TableCell>
+										</SimpleTableRow>
+									))}
+							</SimpleTable>
+						)}
 					</CardPanel>
 				</Card>
 			</DashboardRow>

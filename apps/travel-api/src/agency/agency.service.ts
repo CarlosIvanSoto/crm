@@ -13,7 +13,7 @@ import {
 	sendAgencyInvitation,
 	toAgencyRole,
 } from "@travel/auth";
-import { agencyDb, type Db } from "@travel/db";
+import { agencyDb, type Db, Prisma } from "@travel/db";
 import type { z } from "zod";
 import { InjectDatabase } from "../database/database.constants";
 import { blankToNull } from "../travel/values";
@@ -23,6 +23,10 @@ import type {
 } from "./agency.contracts";
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function num(value: Prisma.Decimal | null): number | null {
+	return value === null ? null : value.toNumber();
+}
 
 @Injectable()
 export class AgencyService {
@@ -60,6 +64,8 @@ export class AgencyService {
 			quotePrefix: settings?.quotePrefix ?? "COT",
 			bookingPrefix: settings?.bookingPrefix ?? "EXP",
 			defaultTerms: settings?.defaultTerms ?? null,
+			defaultCommissionBasis: settings?.defaultCommissionBasis ?? null,
+			defaultCommissionRate: num(settings?.defaultCommissionRate ?? null),
 			viewerRole: role,
 			canManage: canManageAgency(role),
 		};
@@ -109,6 +115,15 @@ export class AgencyService {
 				defaultTerms: input.defaultTerms
 					? blankToNull(input.defaultTerms)
 					: null,
+			}),
+			...(input.defaultCommissionBasis !== undefined && {
+				defaultCommissionBasis: input.defaultCommissionBasis,
+			}),
+			...(input.defaultCommissionRate !== undefined && {
+				defaultCommissionRate:
+					input.defaultCommissionRate === null
+						? null
+						: new Prisma.Decimal(input.defaultCommissionRate),
 			}),
 		};
 
