@@ -8,6 +8,7 @@ import Plane from "@carbon/icons-react/es/Plane";
 import Settings from "@carbon/icons-react/es/Settings";
 import Store from "@carbon/icons-react/es/Store";
 import UserMultiple from "@carbon/icons-react/es/UserMultiple";
+import Wallet from "@carbon/icons-react/es/Wallet";
 import { Button } from "@crm/ui/components/button";
 import type { CarbonIcon } from "@crm/ui/components/icon";
 import { Icon } from "@crm/ui/components/icon";
@@ -49,6 +50,12 @@ const ITEMS: RailItem[] = [
 	{ title: "Bookings", href: "/bookings", icon: Delivery, match: "prefix" },
 	{ title: "Suppliers", href: "/suppliers", icon: Store, match: "prefix" },
 	{ title: "Payments", href: "/payments", icon: Money, match: "prefix" },
+	{
+		title: "Commissions",
+		href: "/commissions",
+		icon: Wallet,
+		match: "prefix",
+	},
 	{ title: "Settings", href: "/settings", icon: Settings, match: "prefix" },
 ];
 

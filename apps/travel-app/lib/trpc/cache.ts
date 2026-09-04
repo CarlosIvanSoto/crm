@@ -31,6 +31,7 @@ export type TravelCache = {
 	quote(id?: string, options?: Options): Promise<void>;
 	booking(id?: string, options?: Options): Promise<void>;
 	payment(bookingId?: string, options?: Options): Promise<void>;
+	commission(bookingId?: string, options?: Options): Promise<void>;
 	activity(options?: Options): Promise<void>;
 	fields(entity?: RecordKind, options?: Options): Promise<void>;
 	savedViews(entity?: RecordKind, options?: Options): Promise<void>;
@@ -146,6 +147,9 @@ export function useTravelCache(): TravelCache {
 					...listKeys(),
 					...activityKeys(),
 					trpc.payments.list.queryKey(),
+					trpc.commissions.list.queryKey(),
+					trpc.commissions.byBooking.queryKey(),
+					trpc.commissions.byAdvisor.queryKey(),
 					trpc.currency.settings.queryKey(),
 				],
 				options,
@@ -155,6 +159,25 @@ export function useTravelCache(): TravelCache {
 			run(
 				[trpc.payments.list.queryKey()],
 				[
+					bookingId
+						? trpc.bookings.byId.queryKey({ id: bookingId })
+						: trpc.bookings.byId.queryKey(),
+					trpc.bookings.list.queryKey(),
+				],
+				options,
+			),
+
+		commission: (bookingId, options) =>
+			run(
+				[
+					trpc.commissions.list.queryKey(),
+					bookingId
+						? trpc.commissions.byBooking.queryKey({ bookingId })
+						: trpc.commissions.byBooking.queryKey(),
+				],
+				[
+					trpc.commissions.byAdvisor.queryKey(),
+					trpc.commissions.bySupplier.queryKey(),
 					bookingId
 						? trpc.bookings.byId.queryKey({ id: bookingId })
 						: trpc.bookings.byId.queryKey(),

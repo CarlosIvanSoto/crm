@@ -17,6 +17,7 @@ const SECTIONS = [
 	"/quotes",
 	"/bookings",
 	"/payments",
+	"/commissions",
 	"/settings",
 ];
 
