@@ -24,6 +24,10 @@
 			],
 			"project": ["**/*.{ts,tsx}"]
 		},
+		"apps/travel-agent": {
+			"entry": ["agent/**/*.ts", "test/**/*.spec.ts"],
+			"project": ["agent/**/*.ts"]
+		},
 		"apps/travel-api": {
 			"entry": ["api/index.ts", "scripts/*.ts", "test/**/*.spec.ts"],
 			"project": ["src/**/*.ts", "scripts/**/*.ts"]
