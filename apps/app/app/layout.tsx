@@ -1,6 +1,7 @@
 import "@crm/ui/globals.css";
 import { Toaster } from "@crm/ui/components/sonner";
 import { TooltipProvider } from "@crm/ui/components/tooltip";
+import { resolveAppTheme } from "@crm/ui/lib/theme";
 import { cn } from "@crm/ui/lib/utils";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -44,6 +45,7 @@ export default function RootLayout({
 		<html
 			lang="en"
 			suppressHydrationWarning
+			data-theme={resolveAppTheme(process.env.APP_THEME)}
 			className={cn(fontSans.variable, fontMono.variable, "h-full antialiased")}
 		>
 			<body className="flex min-h-full flex-col font-sans">
