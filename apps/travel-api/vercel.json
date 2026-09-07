@@ -8,6 +8,10 @@
 		{
 			"path": "/internal/sync/reminders",
 			"schedule": "0 8 * * *"
+		},
+		{
+			"path": "/internal/sync/quote-followups",
+			"schedule": "0 9 * * *"
 		}
 	]
 }

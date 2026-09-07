@@ -89,6 +89,14 @@ export class EnvironmentVariables {
 	TRAVEL_QUOTE_FROM?: string;
 
 	@IsOptional()
+	@IsUrl({ require_tld: false })
+	TRAVEL_AGENT_URL?: string;
+
+	@IsOptional()
+	@IsString()
+	TRAVEL_AGENT_BRIDGE_SECRET?: string;
+
+	@IsOptional()
 	@IsString()
 	REDIS_URL?: string;
 

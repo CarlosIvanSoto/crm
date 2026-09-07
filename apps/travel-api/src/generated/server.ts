@@ -16,6 +16,7 @@ const publicProcedure = t.procedure;
 import { timelineInput, timelineOutput, timelineCountsInput, timelineCountsOutput, taskListInput, taskListOutput, activityCreateInput, activityCreateOutput, completeInput, completeOutput, completeManyInput, assignInput, updateTaskInput, removeInput } from "../activities/activities.contracts";
 import { bulkResultOutput, removeOutput, storageStatusOutput, uploadTokenInput, uploadTokenOutput, createDocumentInput, documentEntryOutput, documentListInput, documentListOutput, documentIdInput, downloadUrlOutput, updateDocumentInput, removeManyInput } from "../documents/documents.contracts";
 import { agencyProfileOutput, updateAgencyProfileInput, agencyMemberListOutput, invitationListOutput, inviteMemberInput, inviteMemberOutput, invitationIdInput, setMemberRoleInput, agencyMemberOutput, memberIdInput } from "../agency/agency.contracts";
+import { conversationQuoteIdInput, conversationListOutput, conversationLatestOutput } from "../agent/agent-conversation.contracts";
 import { bookingListInput, bookingListOutput, bookingIdInput, bookingDetailOutput, bookingCreateInput, bookingSummaryOutput, bookingUpdateArgs, setBookingItemsInput, setBookingTravelersInput, bookingArchiveResultOutput, bookingBulkInput, bookingBulkResultOutput } from "../bookings/bookings.contracts";
 import { commissionListInput, commissionListOutput, commissionByBookingInput, commissionByBookingOutput, advisorReportOutput, supplierReportOutput, createCommissionInput, commissionSummaryOutput, updateCommissionInput, commissionRowOutput, commissionIdInput, commissionDeleteOutput, commissionBulkInput, commissionBulkResultOutput } from "../commissions/commissions.contracts";
 import { currencySettingsOutput, setBaseCurrencyInput, setManualRateInput, removeManualRateInput } from "../currency/currency.contracts";
@@ -99,6 +100,16 @@ const appRouter = t.router({
       .input(memberIdInput)
       .output(memberIdInput)
       .mutation(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
+    }),
+  agentConversation: t.router({
+    list: publicProcedure
+      .input(conversationQuoteIdInput)
+      .output(conversationListOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any),
+    latest: publicProcedure
+      .input(conversationQuoteIdInput)
+      .output(conversationLatestOutput)
+      .query(async () => "PLACEHOLDER_DO_NOT_REMOVE" as any)
     }),
   bookings: t.router({
     list: publicProcedure
