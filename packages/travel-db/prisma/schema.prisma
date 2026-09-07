@@ -28,17 +28,18 @@ model User {
   invitations Invitation[]
   apiKeys     Apikey[]
 
-  ownedCustomers   Customer[] @relation("CustomerOwner")
-  ownedQuotes      Quote[]    @relation("QuoteOwner")
-  ownedBookings    Booking[]  @relation("BookingOwner")
-  authoredActivity Activity[] @relation("ActivityAuthor")
-  assignedActivity Activity[] @relation("ActivityAssignee")
-  uploadedDocs     Document[] @relation("DocumentUploader")
-  fieldValues      FieldValue[] @relation("FieldValueUser")
-  savedViews       SavedView[]  @relation("SavedViewOwner")
-  earnedCommissions   Commission[] @relation("CommissionEarner")
-  authoredCommissions Commission[] @relation("CommissionAuthor")
-  authoredQuoteShares QuoteShare[] @relation("QuoteShareAuthor")
+  ownedCustomers      Customer[]          @relation("CustomerOwner")
+  ownedQuotes         Quote[]             @relation("QuoteOwner")
+  ownedBookings       Booking[]           @relation("BookingOwner")
+  authoredActivity    Activity[]          @relation("ActivityAuthor")
+  assignedActivity    Activity[]          @relation("ActivityAssignee")
+  uploadedDocs        Document[]          @relation("DocumentUploader")
+  fieldValues         FieldValue[]        @relation("FieldValueUser")
+  savedViews          SavedView[]         @relation("SavedViewOwner")
+  earnedCommissions   Commission[]        @relation("CommissionEarner")
+  authoredCommissions Commission[]        @relation("CommissionAuthor")
+  authoredQuoteShares QuoteShare[]        @relation("QuoteShareAuthor")
+  agentConversations  AgentConversation[] @relation("AgentConversationOwner")
 
   @@unique([email])
   @@map("user")
@@ -115,28 +116,30 @@ model Organization {
   members     Member[]
   invitations Invitation[]
 
-  settings         AgencySettings?
-  counters         AgencyCounter[]
-  customers        Customer[]
-  travelers        Traveler[]
-  travelerLoyalty  TravelerLoyalty[]
-  suppliers        Supplier[]
-  quotes           Quote[]
-  quoteOptions     QuoteOption[]
-  quoteItems       QuoteItem[]
-  quoteShares      QuoteShare[]
-  bookings         Booking[]
-  bookingTravelers BookingTraveler[]
-  bookingItems     BookingItem[]
-  payments         Payment[]
-  supplierPayments SupplierPayment[]
-  commissions      Commission[]
-  documents        Document[]
-  activities       Activity[]
-  fieldDefinitions FieldDefinition[]
-  fieldOptions     FieldOption[]
-  fieldValues      FieldValue[]
-  savedViews       SavedView[]
+  settings           AgencySettings?
+  counters           AgencyCounter[]
+  customers          Customer[]
+  travelers          Traveler[]
+  travelerLoyalty    TravelerLoyalty[]
+  suppliers          Supplier[]
+  quotes             Quote[]
+  quoteOptions       QuoteOption[]
+  quoteItems         QuoteItem[]
+  quoteShares        QuoteShare[]
+  bookings           Booking[]
+  bookingTravelers   BookingTraveler[]
+  bookingItems       BookingItem[]
+  payments           Payment[]
+  supplierPayments   SupplierPayment[]
+  commissions        Commission[]
+  documents          Document[]
+  activities         Activity[]
+  fieldDefinitions   FieldDefinition[]
+  fieldOptions       FieldOption[]
+  fieldValues        FieldValue[]
+  savedViews         SavedView[]
+  agentTasks         AgentTask[]
+  agentConversations AgentConversation[]
 
   @@unique([slug])
   @@map("organization")
@@ -209,18 +212,18 @@ model AgencySettings {
   agencyId String       @id
   agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 
-  legalName    String?
-  taxId        String?
-  taxRegime    String?
-  addressJson  Json?
-  phone        String?
-  email        String?
-  baseCurrency String  @default("USD")
-  timezone     String  @default("America/Mexico_City")
-  logoUrl      String?
-  quotePrefix  String  @default("COT")
-  bookingPrefix String @default("EXP")
-  defaultTerms String?
+  legalName              String?
+  taxId                  String?
+  taxRegime              String?
+  addressJson            Json?
+  phone                  String?
+  email                  String?
+  baseCurrency           String           @default("USD")
+  timezone               String           @default("America/Mexico_City")
+  logoUrl                String?
+  quotePrefix            String           @default("COT")
+  bookingPrefix          String           @default("EXP")
+  defaultTerms           String?
   defaultCommissionBasis CommissionBasis?
   defaultCommissionRate  Decimal?         @db.Decimal(6, 4)
 
@@ -252,14 +255,14 @@ model Customer {
   agencyId String
   agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 
-  type      CustomerType @default(PERSON)
-  name      String
-  legalName String?
-  taxId     String?
-  taxRegime String?
-  email     String?
-  phone     String?
-  whatsapp  String?
+  type        CustomerType @default(PERSON)
+  name        String
+  legalName   String?
+  taxId       String?
+  taxRegime   String?
+  email       String?
+  phone       String?
+  whatsapp    String?
   addressJson Json?
 
   ownerId String?
@@ -294,8 +297,8 @@ model Traveler {
   agencyId String
   agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 
-  firstName String
-  lastName  String
+  firstName   String
+  lastName    String
   dateOfBirth DateTime?
   gender      String?
   nationality String?
@@ -333,7 +336,7 @@ model TravelerLoyalty {
   agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 
   travelerId String
-  traveler   Traveler @relation(fields: [travelerId], references: [id], onDelete: Cascade)
+  traveler   Traveler  @relation(fields: [travelerId], references: [id], onDelete: Cascade)
   supplierId String?
   supplier   Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
 
@@ -411,17 +414,17 @@ model Quote {
   ownerId    String?
   owner      User?    @relation("QuoteOwner", fields: [ownerId], references: [id], onDelete: SetNull)
 
-  status      QuoteStatus @default(DRAFT)
-  validUntil  DateTime?
+  status          QuoteStatus @default(DRAFT)
+  validUntil      DateTime?
   travelStartDate DateTime?
   travelEndDate   DateTime?
-  paxAdults   Int @default(1)
-  paxChildren Int @default(0)
-  paxInfants  Int @default(0)
-  destination String?
-  currency    String @default("USD")
-  notes       String?
-  terms       String?
+  paxAdults       Int         @default(1)
+  paxChildren     Int         @default(0)
+  paxInfants      Int         @default(0)
+  destination     String?
+  currency        String      @default("USD")
+  notes           String?
+  terms           String?
 
   acceptedOptionId String?
   acceptedByName   String?
@@ -433,10 +436,12 @@ model Quote {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  options    QuoteOption[]
-  booking    Booking?
-  activities Activity[]
-  shares     QuoteShare[]
+  options            QuoteOption[]
+  booking            Booking?
+  activities         Activity[]
+  shares             QuoteShare[]
+  agentTasks         AgentTask[]
+  agentConversations AgentConversation[]
 
   @@unique([agencyId, folio])
   @@index([agencyId])
@@ -500,28 +505,28 @@ model QuoteItem {
   quoteOptionId String
   quoteOption   QuoteOption @relation(fields: [quoteOptionId], references: [id], onDelete: Cascade)
 
-  type          ItineraryItemType
-  supplierId    String?
-  supplier      Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  type             ItineraryItemType
+  supplierId       String?
+  supplier         Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   confirmationCode String?
-  status        ItineraryItemStatus @default(QUOTED)
+  status           ItineraryItemStatus @default(QUOTED)
 
   startsAt      DateTime?
   endsAt        DateTime?
   startLocation String?
   endLocation   String?
   description   String?
-  paxCount      Int      @default(1)
-  position      Int      @default(0)
+  paxCount      Int       @default(1)
+  position      Int       @default(0)
 
-  costAmount     Decimal? @db.Decimal(14, 2)
+  costAmount     Decimal?  @db.Decimal(14, 2)
   costCurrency   String?
-  sellAmount     Decimal? @db.Decimal(14, 2)
+  sellAmount     Decimal?  @db.Decimal(14, 2)
   sellCurrency   String?
-  costBaseAmount Decimal? @db.Decimal(24, 4)
-  sellBaseAmount Decimal? @db.Decimal(24, 4)
+  costBaseAmount Decimal?  @db.Decimal(24, 4)
+  sellBaseAmount Decimal?  @db.Decimal(24, 4)
   baseCurrency   String?
-  fxRate         Decimal? @db.Decimal(20, 10)
+  fxRate         Decimal?  @db.Decimal(20, 10)
   fxRateAt       DateTime?
 
   details Json?
@@ -582,11 +587,11 @@ model Booking {
   quoteId    String?  @unique
   quote      Quote?   @relation(fields: [quoteId], references: [id], onDelete: SetNull)
 
-  status      BookingStatus @default(DRAFT)
+  status          BookingStatus @default(DRAFT)
   travelStartDate DateTime?
   travelEndDate   DateTime?
-  destination String?
-  currency    String @default("USD")
+  destination     String?
+  currency        String        @default("USD")
 
   sellTotalBase Decimal? @db.Decimal(24, 4)
   costTotalBase Decimal? @db.Decimal(24, 4)
@@ -652,28 +657,28 @@ model BookingItem {
   bookingId String
   booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
-  type          ItineraryItemType
-  supplierId    String?
-  supplier      Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  type             ItineraryItemType
+  supplierId       String?
+  supplier         Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   confirmationCode String?
-  status        ItineraryItemStatus @default(QUOTED)
+  status           ItineraryItemStatus @default(QUOTED)
 
   startsAt      DateTime?
   endsAt        DateTime?
   startLocation String?
   endLocation   String?
   description   String?
-  paxCount      Int      @default(1)
-  position      Int      @default(0)
+  paxCount      Int       @default(1)
+  position      Int       @default(0)
 
-  costAmount     Decimal? @db.Decimal(14, 2)
+  costAmount     Decimal?  @db.Decimal(14, 2)
   costCurrency   String?
-  sellAmount     Decimal? @db.Decimal(14, 2)
+  sellAmount     Decimal?  @db.Decimal(14, 2)
   sellCurrency   String?
-  costBaseAmount Decimal? @db.Decimal(24, 4)
-  sellBaseAmount Decimal? @db.Decimal(24, 4)
+  costBaseAmount Decimal?  @db.Decimal(24, 4)
+  sellBaseAmount Decimal?  @db.Decimal(24, 4)
   baseCurrency   String?
-  fxRate         Decimal? @db.Decimal(20, 10)
+  fxRate         Decimal?  @db.Decimal(20, 10)
   fxRateAt       DateTime?
 
   details Json?
@@ -715,9 +720,9 @@ model Payment {
   amount   Decimal  @db.Decimal(14, 2)
   currency String
 
-  baseAmount   Decimal? @db.Decimal(24, 4)
+  baseAmount   Decimal?  @db.Decimal(24, 4)
   baseCurrency String?
-  fxRate       Decimal? @db.Decimal(20, 10)
+  fxRate       Decimal?  @db.Decimal(20, 10)
   fxRateAt     DateTime?
 
   status    PaymentStatus  @default(SCHEDULED)
@@ -750,9 +755,9 @@ model SupplierPayment {
   amount   Decimal  @db.Decimal(14, 2)
   currency String
 
-  baseAmount   Decimal? @db.Decimal(24, 4)
+  baseAmount   Decimal?  @db.Decimal(24, 4)
   baseCurrency String?
-  fxRate       Decimal? @db.Decimal(20, 10)
+  fxRate       Decimal?  @db.Decimal(20, 10)
   fxRateAt     DateTime?
 
   status    PaymentStatus  @default(SCHEDULED)
@@ -794,7 +799,7 @@ model Commission {
   user      User    @relation("CommissionEarner", fields: [userId], references: [id], onDelete: Restrict)
 
   basis CommissionBasis
-  rate  Decimal? @db.Decimal(6, 4)
+  rate  Decimal?        @db.Decimal(6, 4)
 
   basisBaseAmount Decimal?  @db.Decimal(24, 4)
   amount          Decimal?  @db.Decimal(14, 2)
@@ -937,6 +942,65 @@ model Activity {
   @@map("activity")
 }
 
+model AgentTask {
+  id       String       @id @default(cuid())
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  quoteId String?
+  quote   Quote?  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  kind    String
+  reason  String
+  payload Json?
+
+  priority Int @default(0)
+  budget   Int @default(4)
+  attempts Int @default(0)
+
+  dueAt       DateTime
+  leasedUntil DateTime?
+
+  sessionId  String?
+  startedAt  DateTime?
+  finishedAt DateTime?
+  outcome    String?
+
+  subject String?
+
+  createdAt DateTime @default(now())
+
+  @@index([dueAt, leasedUntil])
+  @@index([quoteId])
+  @@index([agencyId, kind, subject], where: { finishedAt: null })
+  @@map("agentTask")
+}
+
+model AgentConversation {
+  id String @id @default(cuid())
+
+  agencyId String
+  agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  userId String?
+  user   User?   @relation("AgentConversationOwner", fields: [userId], references: [id], onDelete: SetNull)
+
+  sessionId         String? @unique
+  continuationToken String?
+  streamIndex       Int     @default(0)
+
+  lastMessageAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agencyId, quoteId, createdAt])
+  @@map("agentConversation")
+}
+
 enum FieldEntity {
   CUSTOMER
   TRAVELER
@@ -992,8 +1056,8 @@ model FieldOption {
   agencyId String
   agency   Organization @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 
-  fieldId String
-  field   FieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  fieldId  String
+  field    FieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
   label    String
   position Int
 
