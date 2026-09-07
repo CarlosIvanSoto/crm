@@ -6,7 +6,9 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./itinerary-item": "./src/itinerary-item.ts",
-		"./saved-view": "./src/saved-view.ts"
+		"./saved-view": "./src/saved-view.ts",
+		"./eve-stream": "./src/eve-stream.ts",
+		"./eve-tool": "./src/eve-tool.ts"
 	},
 	"scripts": {
 		"check-types": "tsc --noEmit",
