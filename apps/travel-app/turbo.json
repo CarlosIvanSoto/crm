@@ -8,6 +8,9 @@
 			"outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"],
 			"env": ["NEXT_PUBLIC_TRAVEL_API_URL"],
 			"passThroughEnv": [
+				"APP_THEME",
+				"TRAVEL_AGENT_URL",
+				"TRAVEL_AGENT_BRIDGE_SECRET",
 				"TRAVEL_API_URL",
 				"TRAVEL_APP_URL",
 				"TRAVEL_BETTER_AUTH_SECRET",
@@ -30,6 +33,9 @@
 			"cache": false,
 			"persistent": true,
 			"passThroughEnv": [
+				"APP_THEME",
+				"TRAVEL_AGENT_URL",
+				"TRAVEL_AGENT_BRIDGE_SECRET",
 				"TRAVEL_API_URL",
 				"TRAVEL_APP_URL",
 				"TRAVEL_BETTER_AUTH_SECRET",

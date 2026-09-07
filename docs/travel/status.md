@@ -1,9 +1,10 @@
 # Producto de viajes — estado de implementación
 
-Fecha de corte: 2026-09-04. Plan aprobado: `docs/travel/plan_01.md`. La Fase 2
+Fecha de corte: 2026-09-05. Plan aprobado: `docs/travel/plan_01.md`. La Fase 2
 se corta en dos rebanadas: `docs/travel/plan_02.md` es la Fase 2A.
 
-Actualizado el mismo día para cerrar la Fase 7 (documentos).
+Actualizado para cerrar la Fase 9 (auditoría de datos y semilla de
+demostración).
 
 Este archivo dice qué está hecho, qué falta y en qué orden seguir. Las reglas de
 cada área están en `docs/travel/domain.md`, `docs/travel/money.md` y
@@ -30,7 +31,9 @@ cada área están en `docs/travel/domain.md`, `docs/travel/money.md` y
 | 6B | Documento de cotización en la app — página pública, pestaña Share, impresión | HECHO |
 | 7A | Documentos — `Document.pathname`, módulo `documents`, recordatorio de vencimiento | HECHO |
 | 7B | Documentos en la app — pestaña en reserva/pasajero, página `/documents` | HECHO |
-| — | `apps/travel-agent` | FUERA DE ALCANCE. Necesita su propio plan |
+| 8A | `apps/travel-agent` y el disparador — `AgentTask`, `AgentConversation`, seguimiento de cotización | HECHO |
+| 8B | Pestaña Agent en la ficha de cotización | HECHO |
+| 9 | Auditoría de datos y semilla de demostración — `packages/travel-db/prisma/seed/` | HECHO |
 
 El plan de la Fase 3 es `docs/travel/plan_03.md`. Se corta en tres rebanadas.
 
@@ -47,6 +50,14 @@ cotización**. Se corta en dos rebanadas: 6A datos y API, 6B la app.
 El plan de la Fase 7 es `docs/travel/plan_09.md`. Cubre **solo documentos**
 (vouchers, boletos, facturas, identificación). Se corta en dos rebanadas: 7A
 datos y API (HECHO), 7B la app (HECHO).
+
+El plan de la Fase 8 es `docs/travel/plan_10.md`. Cubre `apps/travel-agent` y el
+disparador. Se corta en dos rebanadas: 8A datos, agente y API (HECHO), 8B la app
+(HECHO).
+
+El plan de la Fase 9 es `docs/travel/plan_11.md`. Cubre **solo la semilla de
+demostración**: audita los datos locales y siembra un juego amplio que ejercita
+cada pantalla, filtro y regla. HECHO.
 
 ---
 
@@ -713,9 +724,8 @@ apps/travel-api/test/{helpers,agency-id-inputs,tenancy}.spec.ts   ajustes
 
 ### Pendiente de 4A
 
-- La base `travel` local no se resembró: `prisma migrate reset` necesita el
-  consentimiento del usuario. La migración sí está aplicada. `travel_test` se
-  reconstruyó con la migración.
+- RESUELTO en la Fase 9 — La base `travel` local ya se resiembra con
+  `bun run travel:seed`, que ahora borra y vuelve a sembrar sin `migrate reset`.
 - Recorrido manual con dos cuentas: crear una comisión `MARGIN`, verificar el
   congelado, `recalculate`, una `FIXED` en otra moneda, y que un `agent` no vea
   el margen de la reserva.
@@ -817,8 +827,7 @@ components/travel/commissions/
 ### Pendiente de 4B
 
 - El `next dev` real no se ejecutó. `build`, `check-types`, `lint` y `test` sí.
-- La base `travel` local no se resembró desde 4A. `prisma migrate reset` necesita
-  el consentimiento del usuario.
+- RESUELTO en la Fase 9 — `bun run travel:seed` resiembra la base local.
 - Recorrido manual con dos cuentas: crear una comisión `MARGIN` desde la ficha de
   la reserva, verificar el congelado, `recalculate`, una `FIXED` en otra moneda,
   quitar una tasa y ver el faltante declarado, entrar con un `agent` y ver solo
@@ -909,10 +918,8 @@ apps/travel-api/test/reminders.spec.ts                   nuevo — aislamiento p
 
 ### Pendiente de 5A
 
-- La base `travel` local no se resembró: `prisma db seed` no es idempotente y
-  `migrate reset` necesita consentimiento. La migración sí está aplicada en
-  `travel` y en `travel_test`. Las dos tareas de semilla se insertaron a mano en
-  la base local para el recorrido de 5B.
+- RESUELTO en la Fase 9 — `bun run travel:seed` ahora es idempotente (borra y
+  siembra) y siembra tareas en cada ventana de la bandeja.
 - El `curl` sin secreto responde 403, no 503, porque `TRAVEL_CRON_SECRET` ya está
   en el `.env` local. El caso 503 lo cubre la prueba unitaria del controlador.
 
@@ -1073,8 +1080,8 @@ apps/travel-api/test/{helpers,agency-id-inputs}.spec.ts   ajustes
 
 ### Pendiente de 6A
 
-- La base `travel` local no se resembró desde 5A; la migración sí está
-  aplicada en `travel` y en `travel_test`.
+- RESUELTO en la Fase 9 — `bun run travel:seed` resiembra la base local y
+  siembra seis `QuoteShare` con sus enlaces `/q/<token>` impresos.
 - Sin límite de peticiones en `publicQuote`. Ver riesgos abiertos abajo.
 
 ---
@@ -1224,8 +1231,8 @@ apps/travel-api/test/{helpers,agency-id-inputs}.spec.ts   ajustes
 
 ### Pendiente de 7A
 
-- La base `travel` local no se resembró desde 6A; la migración sí está
-  aplicada en `travel` y en `travel_test`.
+- RESUELTO en la Fase 9 — `bun run travel:seed` resiembra la base local y
+  siembra filas `Document` en cada `DocumentKind`.
 - Sin límite de peticiones en `uploadToken`. Un miembro válido acuña tokens
   sin tope.
 - El almacén no verifica el contenido del archivo, solo tipo declarado y
@@ -1311,6 +1318,192 @@ app/(app)/[agency]/documents/
   de la Fase 1). Un pasaporte escaneado ahora vive en el almacén, cifrado en
   reposo por el proveedor, pero la fila que lo describe no lo está.
 - Sin vista previa en la app — el documento se descarga, no se ve en línea.
+
+---
+
+## Fase 8A — HECHO — `apps/travel-agent` y el disparador
+
+Plan: `docs/travel/plan_10.md`, rebanada 8A.
+
+### Esquema — `packages/travel-db`
+
+`AgentTask` (recorte de `@crm/db`'s modelo homónimo: `quoteId` en vez de
+`contactId`/`companyId`/`dealId`) y `AgentConversation` (el handle de una
+sesión eve — `sessionId`, `continuationToken`, `streamIndex` — nunca la
+transcripción). Ambos en `TENANT_MODELS`. Migración
+`20260904180000_agent_task`.
+
+### `apps/travel-agent` — la app nueva
+
+```
+agent/
+  agent.ts                  defineAgent, modelo fijo en lib/model-config.ts
+  instructions.md, instructions/task.ts
+  channels/travel.ts         /internal/travel/dispatch(-health), cierre de tareas
+  channels/eve.ts            auth del puente (JWT HS256) + AgentConversation
+  schedules/dispatch.ts      cron */10 * * * *
+  tools/read_quote.ts, read_quote_share.ts, read_customer.ts, write_followup_task.ts
+  lib/db.ts, tasks.ts, dispatch.ts, dispatch-config.ts, model-config.ts,
+      session-context.ts, conversations.ts
+  sandbox/sandbox.ts          deny-all, sin TRAVEL_DATABASE_URL en el sandbox
+```
+
+Un único tipo de tarea (`quote-followup`), sin carriles: `drainAll` reclama y
+despacha una sesión eve por fila. `write_followup_task` es la única
+escritura — una `Activity` `TASK` asignada al dueño de la cotización,
+`sourceKey` idempotente por día.
+
+**Diferencia de diseño frente al plan**: el plan proponía montar el puente
+del navegador en `/agent/v1/*`. `useEveAgent`/`Client` de `eve/react` llaman
+siempre a una ruta fija `/eve/v1/*` (`EVE_ROUTE_PREFIX` en el SDK, no
+configurable) — así que el puente vive en `apps/travel-app/app/eve/v1/[...path]/route.ts`,
+igual que el del CRM, y `apps/travel-app/proxy.ts` excluye `eve` de su
+reescritura por agencia (como ya excluye `api`). `AgentConversation` se
+escribe desde `apps/travel-agent` mismo (`instructions/task.ts` en
+`session.started`, `channels/eve.ts` en `message.completed`), nunca desde un
+mutation tRPC — cumple "sin `create` ni `update`" del router.
+
+### `apps/travel-api` — el disparador
+
+`src/agent/`: `quote-followup.service.ts` (`sweepAllAgencies`, la regla de
+tres pasos del plan), `quote-followup.controller.ts`
+(`GET|POST /internal/sync/quote-followups`, copia de `reminders.controller.ts`),
+`bridge.ts`, `agent-dispatch.config.ts`, y el router `agentConversation`
+(`list`, `latest` — de solo lectura). `vercel.json`: `0 9 * * *`.
+
+### Variables y cableado
+
+`TRAVEL_AGENT_URL`, `TRAVEL_AGENT_BRIDGE_SECRET`, `TRAVEL_AI_GATEWAY_API_KEY`
+en `.env.example`, `turbo.json` raíz, `apps/travel-api/turbo.json`,
+`apps/travel-agent/turbo.json`, `apps/travel-app/turbo.json`. `AgentModule` en
+`apps/travel-api/src/app.module.ts`. `knip.json` gana la entrada
+`apps/travel-agent`.
+
+### Verificado
+
+- `bun run check-types` — 23/23.
+- `bun run lint` y `bun run lint:slop` — pasan (mismos warnings de barrel
+  preexistentes).
+- `bun run --filter=travel-agent build` (`eve build`) — pasa.
+- `bun run --filter=@travel/db travel:test` — 16/16 (`agentTask` y
+  `agentConversation` en `tenancy.spec.ts`).
+- `bun run --filter=travel-api test` — 259/259 (`quote-followups.spec.ts`
+  nuevo, 9 casos).
+- `bun run --filter=travel-agent test` — 23/23 (`dispatch.spec.ts`,
+  `channel-auth.spec.ts`, `write-followup-task.spec.ts`).
+
+### Pendiente de 8A
+
+- El recorrido manual con `bun run dev` y `bun run --filter=travel-agent dispatch`
+  no se ejecutó en esta sesión.
+
+## Fase 8B — HECHO — pestaña Agent en la ficha de cotización
+
+Plan: `docs/travel/plan_10.md`, rebanada 8B.
+
+### Archivos nuevos — `apps/travel-app`
+
+```
+app/eve/v1/[...path]/route.ts   el puente (ver nota de diseño en 8A)
+lib/agent-bridge.ts              mintBridgeToken(advisorId, { agencyId, quoteId })
+lib/agent/agent-session.ts       loadThread, composerState, eventsOf — sin AgentEvent
+lib/agent/agent-transcript.ts    toTranscript, resolveThread — sin fuentes web
+components/agent-composer-frame.ts, agent-clarification-composer.tsx
+components/travel/quotes/agent-conversations.tsx   ConversationPicker, de solo lectura
+components/travel/quotes/agent-panel.tsx           la pestaña
+```
+
+`packages/travel-validation` gana `eve-stream.ts` y `eve-tool.ts` — copia
+recortada de `@crm/validation`'s módulos homónimos, porque `apps/travel-app`
+no depende de `@crm/validation` (`docs/travel/domain.md`: comparte solo
+`@crm/ui`, `@crm/env`, `@crm/typescript-config`).
+
+### Cambios fuera de los archivos nuevos
+
+| Archivo | Cambio |
+| --- | --- |
+| `apps/travel-app/components/travel/record-sheet/quote-sheet.tsx` | `+` pestaña `agent` entre `share` y `timeline` |
+| `apps/travel-app/components/travel/record-sheet/record-stack.ts` | `+ record.agentThread` en `params`; `useRecordSheetView` gana `thread`/`setThread` |
+| `apps/travel-app/lib/search-param-keys.ts` | `+ record.agentThread: "thread"` |
+| `apps/travel-app/proxy.ts` | `eve` fuera de la reescritura por agencia (junto a `api`) |
+| `apps/travel-app/lib/trpc/cache.ts` | `+ agentConversation(quoteId?)` |
+| `apps/travel-app/package.json` | `+ eve` |
+
+Sin `useSavedConversation` ni mutation `conversations.save`: la lista se
+refresca (`invalidateQueries`) cuando el turno pasa de ocupado a libre, dando
+tiempo a que `apps/travel-agent` escriba la fila.
+
+### Verificado
+
+- `bun run --filter=travel-app check-types` y `typegen` — pasan.
+- `bun run --filter=travel-app build` — pasa, `/eve/v1/[...path]` dinámico,
+  sin `Module not found: dns`.
+- `bun run lint` / `lint:slop` — pasan.
+
+### Pendiente de 8B
+
+- Recorrido manual de `docs/travel/plan_10.md`'s verificación no se ejecutó.
+- Sin `AgentEvent`: ver Issues de `plan_10.md`.
+
+---
+
+## Fase 9 — HECHO — auditoría de datos y semilla de demostración
+
+Plan: `docs/travel/plan_11.md`. Alcance: **solo la semilla local**. Sin cambios
+en el esquema, la API ni la app.
+
+### Problema
+
+Todo estaba construido y nada se veía funcionando. La base `travel` local tenía
+11 tablas vacías, cero montos en moneda base, cero filas en `ExchangeRate` y
+cada faceta con un solo valor. La semilla de la Fase 1 solo hacía `create`, así
+que resembrar exigía `travel:reset` con consentimiento en una TTY. El pendiente
+«la base local no se resembró» se arrastraba desde la Fase 4A.
+
+### Cambios
+
+```
+packages/travel-db/prisma/seed.ts        orquestador: reset, rates, un ciclo por agencia
+packages/travel-db/prisma/seed/          16 módulos nuevos (ver plan_11.md)
+```
+
+- **Borra y siembra.** `resetSeedData()` borra las organizaciones por slug (el
+  cascade limpia el negocio), los usuarios por la lista exacta de correos, y
+  `ExchangeRate` por `provider: "seed"`. Correr `travel:seed` mil veces da el
+  mismo resultado. `scripts/require-local-db.ts` ya bloquea un host remoto.
+- **Dos bases.** `andes-travel` en `USD`, `maya-tours` en `EUR`. `ExchangeRate`
+  con las dos bases y un override `MANUAL` sobre `USD→GBP`. `JPY` se usa en
+  renglones, pagos y una comisión y **no** recibe tasa, así que `unconverted()`
+  cuenta y la interfaz declara el faltante.
+- **Los montos base salen de `convertToBase`** de `@travel/db/fx`, la misma
+  función de la API. Los totales de opción y de reserva son un espejo a mano de
+  `itemBaseTotals`; el congelado de comisión, un espejo de `freeze()`. `null` si
+  falta un renglón, nunca cero.
+- **Fechas relativas a `now`.** Cinco reservas creadas este mes, salidas a +3,
+  +9 y +28 días, pagos vencidos, un pasaporte que vence en 20 días.
+- **Cinco usuarios por agencia** — `owner`, `admin`, `accountant`, 2 × `agent` —
+  cada uno con contraseña `password123`, para recorrer los seis predicados de
+  rol.
+- **`Document` sin blob.** Filas con el prefijo `agencies/<agencyId>/…`
+  correcto; solo `downloadUrl` falla sin token. `AgentTask` sembrada;
+  `AgentConversation` vacía a propósito.
+- **Determinista.** `makeRandom(20260905 + índice·1009)` por agencia. La corrida
+  imprime los enlaces `/q/<token>` y son estables entre corridas.
+
+### Verificado
+
+- `bun run check-types` — 23/23.
+- `bun run lint` — 15/15. `bun run lint:slop` — pasa.
+- `bun run --filter=@travel/db test` — 16 casos. `bun run --filter=travel-api
+  test` — 259 casos. Sin cambio.
+- `bun prisma/seed.ts` dos veces — mismo resultado, ~1300 filas, ~3 s.
+- Tras sembrar: `quoteItem` sin base = 2, `booking` sin total = 2, pagos
+  `SCHEDULED` vencidos = 8, comisiones sin `amountBase` = 4. Todos a propósito.
+
+### Pendiente de 9
+
+- El `next dev` real y el recorrido con los cinco roles no se ejecutaron.
+- `bun run --filter=travel-agent dispatch` con la tarea reclamable no se corrió.
 
 ---
 

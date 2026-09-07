@@ -4,6 +4,7 @@ import { AuthModule as BetterAuthModule } from "@thallesp/nestjs-better-auth";
 import { auth } from "@travel/auth";
 import { ActivitiesModule } from "./activities/activities.module";
 import { AgencyModule } from "./agency/agency.module";
+import { AgentModule } from "./agent/agent.module";
 import { BookingsModule } from "./bookings/bookings.module";
 import { AppCacheModule } from "./cache/cache.module";
 import { CommissionsModule } from "./commissions/commissions.module";
@@ -54,6 +55,7 @@ import { UsersModule } from "./users/users.module";
 		PaymentsModule,
 		CommissionsModule,
 		ActivitiesModule,
+		AgentModule,
 		DocumentsModule,
 		FieldsModule,
 		SavedViewsModule,

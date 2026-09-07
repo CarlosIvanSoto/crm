@@ -28,6 +28,7 @@ const params = {
 	[SEARCH_PARAM.record.tab]: parseAsString,
 	[SEARCH_PARAM.record.add]: parseAsString,
 	[SEARCH_PARAM.record.timeline]: parseAsString,
+	[SEARCH_PARAM.record.agentThread]: parseAsString,
 	[SEARCH_PARAM.fieldsSheet.entity]: parseAsStringLiteral(RECORD_KINDS),
 	[SEARCH_PARAM.fieldsSheet.field]: parseAsString,
 };
@@ -63,6 +64,7 @@ export function useRecordStack() {
 					[SEARCH_PARAM.record.tab]: null,
 					[SEARCH_PARAM.record.add]: null,
 					[SEARCH_PARAM.record.timeline]: null,
+					[SEARCH_PARAM.record.agentThread]: null,
 					[SEARCH_PARAM.fieldsSheet.entity]: null,
 					[SEARCH_PARAM.fieldsSheet.field]: null,
 				},
@@ -106,6 +108,7 @@ export function useOpenRecord() {
 export function useRecordSheetView(fallbackTab: string) {
 	const [values, setParams] = useQueryStates(params);
 	const tab = values[SEARCH_PARAM.record.tab];
+	const thread = values[SEARCH_PARAM.record.agentThread];
 
 	const active = tab ?? fallbackTab;
 
@@ -113,10 +116,17 @@ export function useRecordSheetView(fallbackTab: string) {
 		(next: string) => {
 			void setParams({
 				[SEARCH_PARAM.record.tab]: next === fallbackTab ? null : next,
+				[SEARCH_PARAM.record.agentThread]: null,
 			});
 		},
 		[setParams, fallbackTab],
 	);
 
-	return { tab: active, setTab };
+	const setThread = useCallback(
+		(next: string | null) =>
+			void setParams({ [SEARCH_PARAM.record.agentThread]: next }),
+		[setParams],
+	);
+
+	return { tab: active, setTab, thread, setThread };
 }

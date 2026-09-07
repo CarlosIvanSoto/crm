@@ -1,0 +1,38 @@
+{
+	"$schema": "https://turborepo.dev/schema.json",
+	"extends": ["//"],
+	"tasks": {
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": [".eve/**", ".output/**", ".vercel/output/**"]
+		},
+		"check-types": {
+			"dependsOn": ["topo", "^build"]
+		},
+		"dev": {
+			"dependsOn": ["$TURBO_EXTENDS$"],
+			"cache": false,
+			"interactive": true,
+			"persistent": true,
+			"passThroughEnv": [
+				"TRAVEL_AGENT_BRIDGE_SECRET",
+				"TRAVEL_AI_GATEWAY_API_KEY",
+				"TRAVEL_DATABASE_URL"
+			]
+		},
+		"dev:headless": {
+			"dependsOn": ["$TURBO_EXTENDS$"],
+			"cache": false,
+			"persistent": true,
+			"passThroughEnv": [
+				"TRAVEL_AGENT_BRIDGE_SECRET",
+				"TRAVEL_AI_GATEWAY_API_KEY",
+				"TRAVEL_DATABASE_URL"
+			]
+		},
+		"test": {
+			"dependsOn": ["topo", "^build"],
+			"passThroughEnv": ["TRAVEL_DATABASE_URL", "TRAVEL_TEST_DATABASE_URL"]
+		}
+	}
+}

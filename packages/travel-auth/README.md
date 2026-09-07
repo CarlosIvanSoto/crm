@@ -46,9 +46,9 @@ the mechanism.
 `packages/travel-db/prisma/schema.prisma` and **deletes what it does not know**.
 `Organization` there carries ~20 hand-written inverse relations (`quotes`,
 `bookings`, `customers`, `settings`, `counters`, `commissions`, `quoteShares`,
-…), `User` carries `earnedCommissions`, `authoredCommissions` and
-`authoredQuoteShares`, and `Member.role` has `@default("agent")`. The CLI
-removes all of them.
+`agentTasks`, `agentConversations`, …), `User` carries `earnedCommissions`,
+`authoredCommissions`, `authoredQuoteShares` and `agentConversations`, and
+`Member.role` has `@default("agent")`. The CLI removes all of them.
 
 Mandatory flow:
 

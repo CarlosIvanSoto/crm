@@ -1,5 +1,5 @@
 import { Skeleton } from "@crm/ui/components/skeleton";
-import { Spinner } from "@crm/ui/components/spinner";
+import { TravelSpinner } from "@crm/ui/components/spinner-travel";
 import { cn } from "@crm/ui/lib/utils";
 import type * as React from "react";
 import { PageTransition } from "./page-transition";
@@ -132,7 +132,7 @@ function PageShellContent({
 function PageShellLoading() {
 	return (
 		<div aria-busy="true" className="flex justify-center py-12">
-			<Spinner size="lg" />
+			<TravelSpinner size="lg" />
 		</div>
 	);
 }

@@ -24,6 +24,9 @@ let customerA: string;
 let commissionB: string;
 let quoteShareB: string;
 let documentB: string;
+let quoteA: string;
+let agentTaskB: string;
+let agentConversationB: string;
 
 async function seedAgency(id: string): Promise<{
 	bookingId: string;
@@ -31,6 +34,9 @@ async function seedAgency(id: string): Promise<{
 	commissionId: string;
 	quoteShareId: string;
 	documentId: string;
+	quoteId: string;
+	agentTaskId: string;
+	agentConversationId: string;
 }> {
 	await db.organization.create({
 		data: { id, name: id, slug: id, createdAt: new Date() },
@@ -89,12 +95,33 @@ async function seedAgency(id: string): Promise<{
 		},
 	});
 
+	const agentTask = await db.agentTask.create({
+		data: {
+			agencyId: id,
+			quoteId: quote.id,
+			kind: "quote-followup",
+			reason: "Sent and undecided",
+			dueAt: new Date(),
+		},
+	});
+
+	const agentConversation = await db.agentConversation.create({
+		data: {
+			agencyId: id,
+			quoteId: quote.id,
+			sessionId: `session-${id}`,
+		},
+	});
+
 	return {
 		bookingId: booking.id,
 		customerId: customer.id,
 		commissionId: commission.id,
 		quoteShareId: quoteShare.id,
 		documentId: document.id,
+		quoteId: quote.id,
+		agentTaskId: agentTask.id,
+		agentConversationId: agentConversation.id,
 	};
 }
 
@@ -120,6 +147,9 @@ beforeAll(async () => {
 	commissionB = seededB.commissionId;
 	quoteShareB = seededB.quoteShareId;
 	documentB = seededB.documentId;
+	quoteA = seededA.quoteId;
+	agentTaskB = seededB.agentTaskId;
+	agentConversationB = seededB.agentConversationId;
 });
 
 afterAll(async () => {
@@ -131,6 +161,8 @@ async function cleanup(): Promise<void> {
 	for (const id of [agencyA, agencyB]) {
 		await db.document.deleteMany({ where: { agencyId: id } });
 		await db.commission.deleteMany({ where: { agencyId: id } });
+		await db.agentConversation.deleteMany({ where: { agencyId: id } });
+		await db.agentTask.deleteMany({ where: { agencyId: id } });
 		await db.quoteShare.deleteMany({ where: { agencyId: id } });
 		await db.quote.deleteMany({ where: { agencyId: id } });
 		await db.booking.deleteMany({ where: { agencyId: id } });
@@ -326,6 +358,44 @@ describe("agencyDb", () => {
 		expect(created.agencyId).toBe(agencyA);
 
 		await db.document.delete({ where: { id: created.id } });
+	});
+
+	it("scopes agentTask the same way", async () => {
+		const unreachable = await agencyDb(db, agencyA).agentTask.findFirst({
+			where: { id: agentTaskB },
+		});
+		expect(unreachable).toBeNull();
+
+		const created = await agencyDb(db, agencyA).agentTask.create({
+			data: {
+				agencyId: agencyB,
+				quoteId: quoteA,
+				kind: "quote-followup",
+				reason: "Sent and undecided",
+				dueAt: new Date(),
+			},
+		});
+		expect(created.agencyId).toBe(agencyA);
+
+		await db.agentTask.delete({ where: { id: created.id } });
+	});
+
+	it("scopes agentConversation the same way", async () => {
+		const unreachable = await agencyDb(db, agencyA).agentConversation.findFirst(
+			{ where: { id: agentConversationB } },
+		);
+		expect(unreachable).toBeNull();
+
+		const created = await agencyDb(db, agencyA).agentConversation.create({
+			data: {
+				agencyId: agencyB,
+				quoteId: quoteA,
+				sessionId: `session-${randomUUID()}`,
+			},
+		});
+		expect(created.agencyId).toBe(agencyA);
+
+		await db.agentConversation.delete({ where: { id: created.id } });
 	});
 
 	it("does not scope a nested create, so it fails closed", async () => {

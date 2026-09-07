@@ -19,6 +19,8 @@ export const TENANT_MODELS = [
 	"Commission",
 	"Document",
 	"Activity",
+	"AgentTask",
+	"AgentConversation",
 	"FieldDefinition",
 	"FieldOption",
 	"FieldValue",

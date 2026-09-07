@@ -1,0 +1,31 @@
+{
+	"name": "travel-agent",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"license": "MIT",
+	"scripts": {
+		"dev": "eve dev",
+		"dev:headless": "eve dev --no-ui",
+		"dispatch": "curl -fsS -X POST \"${TRAVEL_AGENT_URL:-http://127.0.0.1:2010}/eve/v1/dev/schedules/dispatch\"",
+		"build": "eve build",
+		"start": "eve start",
+		"check-types": "tsc --noEmit",
+		"test": "TRAVEL_TELEMETRY_DISABLED=1 bun test",
+		"lint": "biome check .",
+		"clean": "rm -rf .turbo .eve node_modules"
+	},
+	"dependencies": {
+		"@travel/db": "workspace:*",
+		"@travel/validation": "workspace:*",
+		"@crm/env": "workspace:*",
+		"eve": "^0.29.4",
+		"zod": "^4.4.3"
+	},
+	"devDependencies": {
+		"@crm/typescript-config": "workspace:*",
+		"@types/bun": "^1.3.14",
+		"@types/node": "^24.0.0",
+		"typescript": "^5.9.2"
+	}
+}

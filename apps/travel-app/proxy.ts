@@ -78,6 +78,6 @@ function sendTo(path: string, request: NextRequest): NextResponse {
 
 export const config = {
 	matcher: [
-		"/((?!api|_next/static|_next/image|.*\\.(?:ico|png|svg|jpg|jpeg|gif|webp|webmanifest)$).*)",
+		"/((?!api|eve|_next/static|_next/image|.*\\.(?:ico|png|svg|jpg|jpeg|gif|webp|webmanifest)$).*)",
 	],
 };

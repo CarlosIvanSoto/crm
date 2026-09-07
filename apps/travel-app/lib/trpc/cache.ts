@@ -26,6 +26,7 @@ type RemovedRecord = { kind: RecordKind; id: string };
 type RemovedRecords = { kind: RecordKind; ids: string[] };
 
 export type TravelCache = {
+	agentConversation(quoteId?: string, options?: Options): Promise<void>;
 	customer(id?: string, options?: Options): Promise<void>;
 	traveler(id?: string, options?: Options): Promise<void>;
 	supplier(id?: string, options?: Options): Promise<void>;
@@ -114,6 +115,20 @@ export function useTravelCache(): TravelCache {
 		id ? BY_ID[kind].queryKey({ id }) : BY_ID[kind].queryKey();
 
 	return {
+		agentConversation: (quoteId, options) =>
+			run(
+				[
+					quoteId
+						? trpc.agentConversation.list.queryKey({ quoteId })
+						: trpc.agentConversation.list.queryKey(),
+					quoteId
+						? trpc.agentConversation.latest.queryKey({ quoteId })
+						: trpc.agentConversation.latest.queryKey(),
+				],
+				[],
+				options,
+			),
+
 		customer: (id, options) =>
 			run(
 				[record("customer", id)],
