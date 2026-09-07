@@ -33,6 +33,7 @@ import {
 } from "@/components/detail-sheet";
 import { LocalDay, LocalRelativeTime } from "@/components/local-date-time";
 import { draftFromOutput } from "@/components/travel/itinerary/types";
+import { AgentPanel } from "@/components/travel/quotes/agent-panel";
 import {
 	newOption,
 	OptionsEditor,
@@ -328,6 +329,8 @@ export function QuoteSheet({ quoteId }: { quoteId: string }) {
 
 	const timelineTab = <Timeline anchor={{ quoteId }} />;
 
+	const agentTab = <AgentPanel quoteId={quoteId} />;
+
 	return (
 		<>
 			<DetailSheetHeader
@@ -406,6 +409,12 @@ export function QuoteSheet({ quoteId }: { quoteId: string }) {
 						value: "share",
 						label: "Share",
 						content: shareTab,
+						keepMounted: true,
+					},
+					{
+						value: "agent",
+						label: "Agent",
+						content: agentTab,
 						keepMounted: true,
 					},
 					{

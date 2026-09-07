@@ -12,6 +12,7 @@ export const SEARCH_PARAM = {
 		tab: "tab",
 		add: "add",
 		timeline: "timeline",
+		agentThread: "thread",
 	},
 	fieldsSheet: {
 		entity: "manageFields",
