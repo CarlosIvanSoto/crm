@@ -43,6 +43,14 @@ doc is the set of rules that are not optional.
   every further read for that request goes through
   `agencyDb(this.db, share.agencyId)` like anywhere else. `agencyId` still never
   comes from the input — it comes from a row the token alone unlocked.
+- **`AgentTask` and `AgentConversation` carry `agencyId` like every other
+  business table**, and are in `TENANT_MODELS`. `apps/travel-agent` is the
+  third direct reader of `@travel/db` alongside `apps/travel-api` and the
+  scripts — it reads through `agencyDb(this.db, agencyId)` exactly like the
+  API's services, with `agencyId` sourced from the claimed `AgentTask` row (a
+  sweep-dispatched session) or from the bridge token's claims (an advisor's ad
+  hoc conversation), never from a tool's input. See `docs/agent.md` and
+  `docs/travel/plan_10.md`.
 
 ## Folios
 

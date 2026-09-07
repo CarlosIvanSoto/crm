@@ -131,6 +131,30 @@ writes and stamps, and sends nothing. `vercel.json` runs it at `0 8 * * *`.
 `dashboard.summary` carries `tasks: { open, overdue }`. `scope: "me"` counts only
 tasks assigned to the caller.
 
+## `agent` module — the quote follow-up agent's trigger and reader
+
+`apps/travel-agent` is a separate eve deployment, port 2010
+(`docs/agent.md` has the note; `docs/travel/plan_10.md` is the full account).
+The API's half is `src/agent/`:
+
+- **`quote-followup.service.ts`'s `sweepAllAgencies`** walks every agency and,
+  for a `Quote` with `status = SENT`, `archivedAt: null` and an owner, writes
+  one `AgentTask` (`kind: "quote-followup"`) when it has been sent (or first
+  viewed on its share link, whichever is later) for
+  `QUOTE_FOLLOWUP.firstCheckAfterDays` (3) and no open task or recent
+  follow-up `Activity` already covers it. `POST|GET /internal/sync/quote-followups`
+  copies `reminders.controller.ts`'s cron-secret gate exactly. `vercel.json`
+  runs it at `0 9 * * *`, an hour after reminders.
+- **`agentConversation` router** — `@UseMiddlewares(AuthMiddleware, AgencyMiddleware)`,
+  `list(quoteId)` and `latest(quoteId)`, both read-only. The rows themselves
+  are written by `apps/travel-agent` directly through `@travel/db`, never
+  through this router — the same "no create, no update" boundary that keeps
+  intelligence out of the API.
+- **`bridge()`** returns `null` without `TRAVEL_AGENT_BRIDGE_SECRET`, so a
+  sweep that finds work still writes the `AgentTask` row; only the poke that
+  wakes the agent immediately is skipped, and its own `*/10 * * * *` clock
+  picks the row up regardless.
+
 ## `documents` router — vouchers, tickets, invoices, ID documents
 
 `Document` is anchored to a `Booking` or a `Traveler` (`docs/travel/domain.md`).
@@ -224,3 +248,13 @@ public link and sends it by email; `app/(public)/q/[token]/` is what the
 customer opens. `packages/ui/src/styles/print.css` (exported as
 `@crm/ui/print.css`) is the printed layout — `[data-print="hide"]` drops the
 accept form and the print button from the page a customer saves to PDF.
+
+The quote record sheet's Agent tab (`AgentPanel`) talks to `apps/travel-agent`
+through `app/eve/v1/[...path]/route.ts` — mounted there, not under
+`/[agency]`, because `eve/react`'s `useEveAgent` always calls a fixed
+`/eve/v1/*` path; `proxy.ts` excludes `eve` from its per-agency rewrite the
+same way it excludes `api`. The bridge mints a short-lived HS256 token naming
+the advisor, the agency and the quote after checking the quote belongs to the
+caller's agency — the record travels in the token, never in the message,
+`docs/agent.md`'s rule. A task the daily sweep files still lands in the
+advisor's task inbox (Fase 5) with no need to open this tab.

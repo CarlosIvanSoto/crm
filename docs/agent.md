@@ -710,3 +710,15 @@ script did not create.
 **`taskFromToken` keys on the `task:` marker, not a fixed prefix**
 (`test/crm-token.spec.ts`). **A channel handler must not assume the token it receives
 is byte-identical to the one it sent.**
+
+## `apps/travel-agent` exists, and it is not a copy of this one
+
+The agencies product has its own eve deployment, `apps/travel-agent`, port
+2010. It is a deliberate cut-down, not a second copy of everything above: one
+task kind (`quote-followup`), no lanes, no dynamic per-row model, no
+`lib/focus.ts` budget, no vendor of enrichment, no `AgentEvent` audit trail.
+The plan that built it, `docs/travel/plan_10.md`, spells out exactly which
+pieces of this file it copies and which it leaves out, and why. Read it
+instead of assuming this file's rules all still apply — most do, in a smaller
+shape; a few (the two lanes, the evidence-and-facts engine, the team-agent
+builder) simply have no equivalent yet.

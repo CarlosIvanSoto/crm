@@ -94,6 +94,21 @@ list fails closed.** Parsed on demand. `packages/auth/src/workspace.ts`.
 - **`isMarketing()` (`apps/app/lib/env.ts`) reads per request**, so a config change
   needs no rebuild. Declared in `apps/app/turbo.json` `passThroughEnv`.
 
+## `APP_THEME` — brand color, `green` by default
+
+Sets `data-theme` on `<html>` in both `apps/app` and `apps/travel-app`. The
+color values live in `packages/ui/src/styles/globals.css`
+(`[data-theme="…"]` blocks), not in this variable — it only selects which
+block applies.
+
+- **`resolveAppTheme` (`packages/ui/src/lib/theme.ts`) falls back to `green`**
+  for an empty or unknown value. It never throws.
+- **A new color is a new `[data-theme]` block in `globals.css`, plus a new
+  entry in `APP_THEMES`** — the variable itself does not need to change shape.
+- Read directly server-side (`process.env.APP_THEME`), not exposed to the
+  browser bundle. Declared in `passThroughEnv` in the root and both apps'
+  `turbo.json`.
+
 ## Typed, validated env
 
 `apps/api/src/config/env.validation.ts` runs via `ConfigModule.forRoot({ validate })`,
@@ -102,6 +117,18 @@ and lists every variable the API reads and nothing else.
 - **Validation runs while `AppModule` is evaluated** — a test must set variables before
   importing it (see the dynamic `import()` in `test/auth.e2e.spec.ts`).
 - **The schema is the API's, not the repo's** — `@crm/auth` and the agent read their own.
+
+## `apps/travel-agent` repeats the CRM agent's variables, `TRAVEL_`-prefixed
+
+`TRAVEL_AGENT_URL` and `TRAVEL_AGENT_BRIDGE_SECRET` are `AGENT_URL` and
+`AGENT_BRIDGE_SECRET` for the quote follow-up agent — same rules, same
+"unset means no bridge" fallback, own deployment on port 2010.
+`TRAVEL_AI_GATEWAY_API_KEY` is `AI_GATEWAY_API_KEY` for that same deployment:
+not needed on Vercel (OIDC resolves it per project there), a real key
+everywhere else. All three are declared in `globalPassThroughEnv` in the root
+`turbo.json` and in `apps/travel-agent/turbo.json`'s and
+`apps/travel-app/turbo.json`'s own `passThroughEnv` — the same three-homes
+rule as any other variable here.
 
 ## Optional: what the agent can do
 

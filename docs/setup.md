@@ -10,7 +10,8 @@ reads once.
 cp .env.example .env        # fill DATABASE_URL, BETTER_AUTH_SECRET, ALLOWED_SIGN_IN
 docker compose up -d        # Postgres, matching .env.example
 bun run db:migrate && bun run db:seed
-bun run dev                 # app :3000, api :3001, agent :2000
+bun run dev                 # crm: app :3000, api :3001, agent :2000
+                             # travel: app :3010, api :3011, agent :2010
 ```
 
 Prisma from the repo root: `db:generate`, `db:migrate`, `db:push`, `db:reset`,
@@ -23,6 +24,43 @@ run needs `db:migrate` only for the seed that follows it. When the database and
 `dev:prepare` stops the whole run rather than starting servers against a schema
 they do not match — reconcile with `db:migrate`, or `db:reset` when the divergence
 is an edited migration that has already been applied.
+
+## Travel demo data
+
+The travel product (`apps/travel-app`, `apps/travel-api`) has its own database
+and its own seed. From the repo root:
+
+```sh
+bun run travel:deploy      # apply migrations to the travel database
+bun run travel:seed        # audit-and-fill demo dataset
+```
+
+`travel:seed` **deletes and re-creates** the two seed agencies (`andes-travel`,
+`maya-tours`) on every run, so it is safe to run again. `require-local-db.ts`
+refuses a non-local `TRAVEL_DATABASE_URL`; nothing else is touched.
+
+It seeds two agencies with different base currencies (`USD` and `EUR`), an
+`ExchangeRate` set with a `MANUAL` override, and one currency (`JPY`) left with
+no rate on purpose so the "not converted" disclosure shows. Every screen, filter
+and money rule has rows on both sides.
+
+Ten accounts, one password for all — `password123`:
+
+| Email | Role | Agency |
+| --- | --- | --- |
+| `owner@andes.example` | owner | Andes Travel (USD) |
+| `admin@andes.example` | admin | Andes Travel |
+| `carla@andes.example` | accountant | Andes Travel |
+| `ana@andes.example` | agent | Andes Travel |
+| `bruno@andes.example` | agent | Andes Travel |
+| `owner@maya.example` | owner | Maya Tours (EUR) |
+| `admin@maya.example` | admin | Maya Tours |
+| `pilar@maya.example` | accountant | Maya Tours |
+| `mateo@maya.example` | agent | Maya Tours |
+| `lucia@maya.example` | agent | Maya Tours |
+
+The run prints the public quote links (`/q/<token>`) at the end — open them with
+no session. The tokens are stable across runs.
 
 ## Google Cloud
 
@@ -48,6 +86,19 @@ AGENT_BRIDGE_SECRET="$(openssl rand -base64 32)"
 `localDev()` accepts any loopback request, so `curl 127.0.0.1` proves nothing about
 the bridge — send `-H 'Host: agent.example.com'`. `GET /eve/v1/info` is the whole
 inventory, including a `diagnostics` count that finds files eve silently ignored.
+
+The travel agencies product repeats this exactly, `TRAVEL_`-prefixed and on
+its own ports:
+
+```sh
+TRAVEL_AGENT_URL="http://127.0.0.1:2010"
+TRAVEL_AGENT_BRIDGE_SECRET="$(openssl rand -base64 32)"
+```
+
+Same error table, same cause for each — `apps/travel-app`'s Agent tab reads
+`TRAVEL_AGENT_BRIDGE_SECRET` where the CRM reads `AGENT_BRIDGE_SECRET`, and
+`bun run --filter=travel-agent dispatch` is the manual-dispatch escape hatch
+in place of `bun run --filter=agent dispatch`.
 
 ## Running the agent
 
